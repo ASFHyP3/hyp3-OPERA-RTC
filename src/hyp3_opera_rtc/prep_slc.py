@@ -76,7 +76,8 @@ def prep_slc(
     print('Downloading data...')
     granule_path, granule_bbox = download_slc_granule(granule, work_dir)
     orbit_path = utils.download_orbit(granule, work_dir)
-    dem_path = utils.download_dem_for_footprint(granule_bbox, work_dir)
+    dem_path = work_dir / 'dem.tif'
+    utils.download_dem_for_footprint(granule_bbox, dem_path)
     return granule_path, orbit_path, dem_path
 
 
@@ -84,7 +85,7 @@ def main():
     """Prep SLC entrypoint.
 
     Example command:
-    python -m hyp3_opera_rtc ++process prep_slc S1A_IW_SLC__1SDV_20240113T020816_20240113T020843_052082_064B71_4818-SLC
+    python -m hyp3_opera_rtc ++process prep_slc S1A_IW_SLC__1SDV_20221201T020814_20221201T020840_046132_0585C1_C7DE
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--earthdata-username', default=None, help="Username for NASA's EarthData")
