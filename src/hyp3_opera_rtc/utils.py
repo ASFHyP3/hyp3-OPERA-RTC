@@ -6,6 +6,7 @@ from platform import system
 from typing import Tuple
 
 import rasterio
+import requests
 from dem_stitcher import stitch_dem
 from hyp3lib.get_orb import downloadSentinelOrbitFile
 from shapely.geometry import Polygon
@@ -137,13 +138,40 @@ def download_orbit(granule_name: str, output_dir: Path) -> Path:
     return orbit_path
 
 
-def download_dem_for_footprint(footprint: Polygon, dem_path: Path) -> None:
+def download_dem_for_footprint(dem_path: Path, footprint: Polygon) -> Path:
     """Download a DEM for the given footprint.
     Args:
-        footprint: The footprint to download a DEM for.
         dem_path: The path to download the DEM to.
+        footprint: The footprint to download a DEM for.
+
+    Returns:
+        Path to the downloaded DEM
     """
-    X, p = stitch_dem(footprint.bounds, dem_name='glo_30', dst_ellipsoidal_height=False, dst_area_or_point='Point')
-    with rasterio.open(dem_path, 'w', **p) as ds:
-        ds.write(X, 1)
-        ds.update_tags(AREA_OR_POINT='Point')
+    if not dem_path.exists():
+        X, p = stitch_dem(footprint.bounds, dem_name='glo_30', dst_ellipsoidal_height=False, dst_area_or_point='Point')
+        with rasterio.open(dem_path, 'w', **p) as ds:
+            ds.write(X, 1)
+            ds.update_tags(AREA_OR_POINT='Point')
+    return dem_path
+
+
+def download_burst_db(save_dir: Path) -> Path:
+    """Download the OPERA burst database.
+    Currently using a version created using opera-adt/burst_db v0.4.0, but hope to switch to ASF-provide source.
+
+    Args:
+        save_dir: Directory to save the database to
+
+    Returns:
+        Path to the downloaded database
+    """
+    db_path = save_dir / 'opera-burst-bbox-only.sqlite3'
+    url = 'https://ffwilliams2-shenanigans.s3.us-west-2.amazonaws.com/opera/opera-burst-bbox-only.sqlite3'
+
+    if not db_path.exists():
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(db_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+    return db_path
