@@ -5,16 +5,21 @@ from pathlib import Path
 from platform import system
 from typing import Tuple
 
+import numpy as np
 import rasterio
 import requests
+import shapely
 from dem_stitcher import stitch_dem
 from hyp3lib.get_orb import downloadSentinelOrbitFile
-from shapely.geometry import Polygon
+from osgeo import gdal
+from shapely.geometry import LinearRing, Polygon
 
 
+gdal.UseExceptions()
 log = logging.getLogger(__name__)
 ESA_HOST = 'dataspace.copernicus.eu'
 EARTHDATA_HOST = 'urs.earthdata.nasa.gov'
+DEM_URL = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1'
 
 
 def get_netrc() -> Path:
@@ -175,3 +180,153 @@ def download_burst_db(save_dir: Path) -> Path:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
     return db_path
+
+
+def check_dateline(poly):
+    """
+    Split `poly` if it crosses the dateline.
+
+    Parameters
+    ----------
+    poly : shapely.geometry.Polygon
+        Input polygon.
+
+    Returns
+    -------
+    polys : list of shapely.geometry.Polygon
+        A list containing: the input polygon if it didn't cross the dateline, or
+        two polygons otherwise (one on either side of the dateline).
+
+    """
+    x_min, _, x_max, _ = poly.bounds
+
+    # Check dateline crossing
+    if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
+        dateline = shapely.wkt.loads('LINESTRING( 180.0 -90.0, 180.0 90.0)')
+
+        # build new polygon with all longitudes between 0 and 360
+        x, y = poly.exterior.coords.xy
+        new_x = (k + (k <= 0.0) * 360 for k in x)
+        new_ring = LinearRing(zip(new_x, y))
+
+        # Split input polygon
+        # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
+        merged_lines = shapely.ops.linemerge([dateline, new_ring])
+        border_lines = shapely.ops.unary_union(merged_lines)
+        decomp = shapely.ops.polygonize(border_lines)
+
+        polys = list(decomp)
+
+        for polygon_count in range(len(polys)):
+            x, y = polys[polygon_count].exterior.coords.xy
+            # if there are no longitude values above 180, continue
+            if not any([k > 180 for k in x]):
+                continue
+
+            # otherwise, wrap longitude values down by 360 degrees
+            x_wrapped_minus_360 = np.asarray(x) - 360
+            polys[polygon_count] = Polygon(zip(x_wrapped_minus_360, y))
+
+    else:
+        # If dateline is not crossed, treat input poly as list
+        polys = [poly]
+
+    return polys
+
+
+def snap_coord(val, snap, offset, round_func):
+    """Snap edge coordinates using the DEM"""
+    return round_func(float(val - offset) / snap) * snap + offset
+
+
+def translate_dem(vrt_filename, output_path, footprint):
+    """
+    Translate a DEM from S3 to a region matching the provided boundaries.
+
+    Notes
+    -----
+    This function is decorated to perform retries using exponential backoff to
+    make the remote call resilient to transient issues stemming from network
+    access, authorization and AWS throttling (see "Query throttling" section at
+    https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html).
+
+    Parameters
+    ----------
+    vrt_filename: str
+        Path to the input VRT file
+    output_path: str
+        Path to the translated output GTiff file
+    x_min: float
+        Minimum longitude bound of the sub-window
+    x_max: float
+        Maximum longitude bound of the sub-window
+    y_min: float
+        Minimum latitude bound of the sub-window
+    y_max: float
+        Maximum latitude bound of the sub-window
+
+    """
+    ds = gdal.Open(vrt_filename, gdal.GA_ReadOnly)
+
+    # update cropping coordinates to not exceed the input DEM bounding box
+    input_x_min, xres, _, input_y_max, _, yres = ds.GetGeoTransform()
+    length = ds.GetRasterBand(1).YSize
+    width = ds.GetRasterBand(1).XSize
+
+    # Snap edge coordinates using the DEM pixel spacing
+    # (xres and yres) and starting coordinates (input_x_min and
+    # input_x_max). Maximum values are rounded using np.ceil
+    # and minimum values are rounded using np.floor
+    x_min, y_min, x_max, y_max = footprint.bounds
+    snapped_x_min = snap_coord(x_min, xres, input_x_min, np.floor)
+    snapped_x_max = snap_coord(x_max, xres, input_x_min, np.ceil)
+    snapped_y_min = snap_coord(y_min, yres, input_y_max, np.floor)
+    snapped_y_max = snap_coord(y_max, yres, input_y_max, np.ceil)
+
+    input_y_min = input_y_max + length * yres
+    input_x_max = input_x_min + width * xres
+
+    adjusted_x_min = max(snapped_x_min, input_x_min)
+    adjusted_x_max = min(snapped_x_max, input_x_max)
+    adjusted_y_min = max(snapped_y_min, input_y_min)
+    adjusted_y_max = min(snapped_y_max, input_y_max)
+
+    try:
+        gdal.Translate(
+            output_path, ds, format='GTiff', projWin=[adjusted_x_min, adjusted_y_max, adjusted_x_max, adjusted_y_min]
+        )
+    except RuntimeError as err:
+        if 'negative width and/or height' in str(err):
+            print(
+                'Adjusted window translation failed due to negative width and/or height, '
+                'defaulting to original projection window'
+            )
+            gdal.Translate(output_path, ds, format='GTiff', projWin=[x_min, y_max, x_max, y_min])
+            return
+
+        raise
+
+
+def download_opera_dem_for_footprint(outfile: Path, footprint: Polygon):
+    """
+    Download the OPERA/NISAR DEM from ASF.
+
+    Parameters:
+    ----------
+    polys: list of shapely.geometry.Polygon
+        List of shapely polygons.
+    dem_location : str
+       S3 bucket and key containing the global DEM to download from.
+    outfile:
+        Path to the where the output DEM file is to be staged.
+
+    """
+    footprints = check_dateline(footprint)
+    dem_list = []
+    for idx, footprint in enumerate(footprints):
+        vrt_filename = f'/vsicurl/{DEM_URL}/EPSG4326/EPSG4326.vrt'
+        output_path = outfile.parent / f'dem_{idx}.tif'
+        dem_list.append(output_path)
+        translate_dem(vrt_filename, output_path, footprint.bounds)
+
+    gdal.BuildVRT(str(outfile), dem_list)
