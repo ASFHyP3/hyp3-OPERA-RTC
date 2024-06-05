@@ -43,23 +43,6 @@ def get_netrc() -> Path:
     return netrc_file
 
 
-def set_creds(service, username, password) -> None:
-    """Set username/password environmental variables for a service.
-    username/password are set using the following format:
-    SERVICE_USERNAME, SERVICE_PASSWORD
-
-    Args:
-        service: Service to set credentials for
-        username: Username for the service
-        password: Password for the service
-    """
-    if username is not None:
-        os.environ[f'{service.upper()}_USERNAME'] = username
-
-    if password is not None:
-        os.environ[f'{service.upper()}_PASSWORD'] = password
-
-
 def find_creds_in_env(username_name, password_name) -> Tuple[str, str]:
     """Find credentials for a service in the environment.
 

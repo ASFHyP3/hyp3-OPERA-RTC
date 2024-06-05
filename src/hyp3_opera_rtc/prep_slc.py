@@ -6,7 +6,7 @@ from zipfile import ZipFile
 import asf_search
 from shapely.geometry import Polygon, shape
 
-from hyp3_opera_rtc import utils, dem
+from hyp3_opera_rtc import dem, utils
 
 
 def download_slc_granule(granule_name: str, output_dir: Path, unzip: bool = False) -> Tuple[Path, Polygon]:
@@ -50,33 +50,23 @@ def download_slc_granule(granule_name: str, output_dir: Path, unzip: bool = Fals
 
 def prep_slc(
     granule: str,
-    earthdata_username: str = None,
-    earthdata_password: str = None,
-    esa_username: str = None,
-    esa_password: str = None,
+    use_reseorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
     """Prepare data for SLC-based processing.
 
     Args:
         granules: List of Sentinel-1 level-0 granules to back-project
-        earthdata_username: Username for NASA's EarthData service
-        earthdata_password: Password for NASA's EarthData service
-        esa_username: Username for ESA's Copernicus Data Space Ecosystem
-        esa_password: Password for ESA's Copernicus Data Space Ecosystem
-        bucket: AWS S3 bucket for uploading the final product(s)
-        bucket_prefix: Add a bucket prefix to the product(s)
+        use_reseorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
-    utils.set_creds('EARTHDATA', earthdata_username, earthdata_password)
-    utils.set_creds('ESA', esa_username, esa_password)
     if work_dir is None:
         work_dir = Path.cwd()
 
     print('Downloading data...')
     granule_path, granule_bbox = download_slc_granule(granule, work_dir)
-    # orbit_path = utils.download_orbit(granule, work_dir, orbit_type='AUX_RESORB')
-    orbit_path = utils.download_orbit(granule, work_dir)#, orbit_type='AUX_POEORB')
+    orbit_type = 'AUX_RESORB' if use_reseorb else 'AUX_POEORB'
+    orbit_path = utils.download_orbit(granule, work_dir, orbit_type=orbit_type)
     db_path = utils.download_burst_db(work_dir)
     dem_path = work_dir / 'dem.tif'
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
@@ -90,11 +80,10 @@ def main():
     python -m hyp3_opera_rtc ++process prep_slc S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--earthdata-username', default=None, help="Username for NASA's EarthData")
-    parser.add_argument('--earthdata-password', default=None, help="Password for NASA's EarthData")
-    parser.add_argument('--esa-username', default=None, help="Username for ESA's Copernicus Data Space Ecosystem")
-    parser.add_argument('--esa-password', default=None, help="Password for ESA's Copernicus Data Space Ecosystem")
     parser.add_argument('granule', help='S1 granule to load data for.')
+    parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB orbits')
+    parser.add_argument('--work-dir', default=None, help='Working directory for processing')
+
     args = parser.parse_args()
 
     prep_slc(**args.__dict__)
