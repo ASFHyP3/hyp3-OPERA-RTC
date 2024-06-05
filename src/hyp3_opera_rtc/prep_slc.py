@@ -50,14 +50,14 @@ def download_slc_granule(granule_name: str, output_dir: Path, unzip: bool = Fals
 
 def prep_slc(
     granule: str,
-    use_reseorb: bool = True,
+    use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
     """Prepare data for SLC-based processing.
 
     Args:
         granules: List of Sentinel-1 level-0 granules to back-project
-        use_reseorb: Use the RESORB orbits instead of the POEORB orbits
+        use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
     if work_dir is None:
@@ -65,7 +65,7 @@ def prep_slc(
 
     print('Downloading data...')
     granule_path, granule_bbox = download_slc_granule(granule, work_dir)
-    orbit_type = 'AUX_RESORB' if use_reseorb else 'AUX_POEORB'
+    orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
     orbit_path = utils.download_orbit(granule, work_dir, orbit_type=orbit_type)
     db_path = utils.download_burst_db(work_dir)
     dem_path = work_dir / 'dem.tif'
