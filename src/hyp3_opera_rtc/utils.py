@@ -1,9 +1,10 @@
 import logging
 import netrc
 import os
+import urllib
 from pathlib import Path
 from platform import system
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import rasterio
@@ -12,7 +13,11 @@ import shapely
 from dem_stitcher import stitch_dem
 from hyp3lib.get_orb import downloadSentinelOrbitFile
 from osgeo import gdal
+from requests.adapters import HTTPAdapter
 from shapely.geometry import LinearRing, Polygon
+from urllib3.util.retry import Retry
+
+from hyp3_opera_rtc import utils
 
 
 gdal.UseExceptions()
@@ -20,6 +25,11 @@ log = logging.getLogger(__name__)
 ESA_HOST = 'dataspace.copernicus.eu'
 EARTHDATA_HOST = 'urs.earthdata.nasa.gov'
 DEM_URL = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1'
+AUTH_URL = (
+    'https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g'
+    '&redirect_uri=https://auth.asf.alaska.edu/login&app_type=401'
+)
+PROFILE_URL = 'https://urs.earthdata.nasa.gov/profile'
 
 
 def get_netrc() -> Path:
@@ -128,7 +138,7 @@ def get_earthdata_credentials() -> Tuple[str, str]:
     )
 
 
-def download_orbit(granule_name: str, output_dir: Path) -> Path:
+def download_orbit(granule_name: str, output_dir: Path, orbit_type: Optional[str] = None) -> Path:
     """Download a S1 orbit file. Prefer using the ESA API,
     but fallback to ASF if needed.
 
@@ -139,7 +149,17 @@ def download_orbit(granule_name: str, output_dir: Path) -> Path:
     Returns:
         Path to the downloaded orbit file
     """
-    orbit_path, _ = downloadSentinelOrbitFile(granule_name, str(output_dir), esa_credentials=get_esa_credentials())
+    if orbit_type is None:
+        orbit_type = ('AUX_POEORB', 'AUX_RESORB')
+    elif isinstance(orbit_type, str):
+        orbit_type = tuple([orbit_type])
+
+    orbit_path, _ = downloadSentinelOrbitFile(
+        granule_name,
+        str(output_dir),
+        esa_credentials=get_esa_credentials(),
+        orbit_types=orbit_type,
+    )
     return orbit_path
 
 
@@ -234,99 +254,74 @@ def check_dateline(poly):
     return polys
 
 
-def snap_coord(val, snap, offset, round_func):
-    """Snap edge coordinates using the DEM"""
-    return round_func(float(val - offset) / snap) * snap + offset
+class AuthenticationError(Exception):
+    pass
 
 
-def translate_dem(vrt_filename, output_path, footprint):
+def get_authenticated_session() -> requests.Session:
+    """Log into EarthData using credentials for `urs.earthdata.nasa.gov` from either the provided
+     credentials or a `.netrc` file.
+
+    Returns:
+        An authenticated HyP3 Session
     """
-    Translate a DEM from S3 to a region matching the provided boundaries.
+    s = requests.Session()
+    auth = utils.get_earthdata_credentials()
 
-    Notes
-    -----
-    This function is decorated to perform retries using exponential backoff to
-    make the remote call resilient to transient issues stemming from network
-    access, authorization and AWS throttling (see "Query throttling" section at
-    https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html).
+    response = s.get(AUTH_URL, auth=auth)
+    auth_error_message = (
+        'Was not able to authenticate with credentials provided\n'
+        'This could be due to invalid credentials or a connection error.'
+    )
 
-    Parameters
-    ----------
-    vrt_filename: str
-        Path to the input VRT file
-    output_path: str
-        Path to the translated output GTiff file
-    x_min: float
-        Minimum longitude bound of the sub-window
-    x_max: float
-        Maximum longitude bound of the sub-window
-    y_min: float
-        Minimum latitude bound of the sub-window
-    y_max: float
-        Maximum latitude bound of the sub-window
+    parsed_url = urllib.parse.urlparse(response.url)
+    query_params = urllib.parse.parse_qs(parsed_url.query)
+    error_msg = query_params.get('error_msg')
+    resolution_url = query_params.get('resolution_url')
 
-    """
-    ds = gdal.Open(vrt_filename, gdal.GA_ReadOnly)
+    if error_msg is not None and resolution_url is not None:
+        raise AuthenticationError(f'{error_msg[0]}: {resolution_url[0]}')
 
-    # update cropping coordinates to not exceed the input DEM bounding box
-    input_x_min, xres, _, input_y_max, _, yres = ds.GetGeoTransform()
-    length = ds.GetRasterBand(1).YSize
-    width = ds.GetRasterBand(1).XSize
-
-    # Snap edge coordinates using the DEM pixel spacing
-    # (xres and yres) and starting coordinates (input_x_min and
-    # input_x_max). Maximum values are rounded using np.ceil
-    # and minimum values are rounded using np.floor
-    x_min, y_min, x_max, y_max = footprint.bounds
-    snapped_x_min = snap_coord(x_min, xres, input_x_min, np.floor)
-    snapped_x_max = snap_coord(x_max, xres, input_x_min, np.ceil)
-    snapped_y_min = snap_coord(y_min, yres, input_y_max, np.floor)
-    snapped_y_max = snap_coord(y_max, yres, input_y_max, np.ceil)
-
-    input_y_min = input_y_max + length * yres
-    input_x_max = input_x_min + width * xres
-
-    adjusted_x_min = max(snapped_x_min, input_x_min)
-    adjusted_x_max = min(snapped_x_max, input_x_max)
-    adjusted_y_min = max(snapped_y_min, input_y_min)
-    adjusted_y_max = min(snapped_y_max, input_y_max)
+    if error_msg is not None and 'Please update your profile' in error_msg[0]:
+        raise AuthenticationError(f'{error_msg[0]}: {PROFILE_URL}')
 
     try:
-        gdal.Translate(
-            output_path, ds, format='GTiff', projWin=[adjusted_x_min, adjusted_y_max, adjusted_x_max, adjusted_y_min]
-        )
-    except RuntimeError as err:
-        if 'negative width and/or height' in str(err):
-            print(
-                'Adjusted window translation failed due to negative width and/or height, '
-                'defaulting to original projection window'
-            )
-            gdal.Translate(output_path, ds, format='GTiff', projWin=[x_min, y_max, x_max, y_min])
-            return
+        response.raise_for_status()
+    except requests.HTTPError:
+        raise AuthenticationError(auth_error_message)
 
-        raise
+    return s
 
 
-def download_opera_dem_for_footprint(outfile: Path, footprint: Polygon):
+def download_earthdata_file(
+    url: str, out_dir: Path, session: Optional[requests.Session] = None, retries=2, backoff_factor=1
+) -> Path:
+    """Download a file from EarthData using the provided URL.
+    Args:
+        url: URL of the file to download
+        out_dir: Directory to save the downloaded file in
+        retries: Number of retries to attempt
+        backoff_factor: Factor for calculating time between retries
+    Returns:
+        download_path: The path to the downloaded file
     """
-    Download the OPERA/NISAR DEM from ASF.
+    filepath = out_dir / url.split('/')[-1]
+    if session is None:
+        session = get_authenticated_session()
+    retry_strategy = Retry(
+        total=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=[429, 500, 502, 503, 504],
+    )
 
-    Parameters:
-    ----------
-    polys: list of shapely.geometry.Polygon
-        List of shapely polygons.
-    dem_location : str
-       S3 bucket and key containing the global DEM to download from.
-    outfile:
-        Path to the where the output DEM file is to be staged.
+    session.mount('https://', HTTPAdapter(max_retries=retry_strategy))
+    session.mount('http://', HTTPAdapter(max_retries=retry_strategy))
+    with session.get(url, stream=True) as s:
+        s.raise_for_status()
+        with open(filepath, 'wb') as f:
+            for chunk in s.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+    session.close()
 
-    """
-    footprints = check_dateline(footprint)
-    dem_list = []
-    for idx, footprint in enumerate(footprints):
-        vrt_filename = f'/vsicurl/{DEM_URL}/EPSG4326/EPSG4326.vrt'
-        output_path = outfile.parent / f'dem_{idx}.tif'
-        dem_list.append(output_path)
-        translate_dem(vrt_filename, output_path, footprint.bounds)
-
-    gdal.BuildVRT(str(outfile), dem_list)
+    return filepath

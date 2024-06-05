@@ -6,7 +6,7 @@ from zipfile import ZipFile
 import asf_search
 from shapely.geometry import Polygon, shape
 
-from hyp3_opera_rtc import utils
+from hyp3_opera_rtc import utils, dem
 
 
 def download_slc_granule(granule_name: str, output_dir: Path, unzip: bool = False) -> Tuple[Path, Polygon]:
@@ -75,10 +75,11 @@ def prep_slc(
 
     print('Downloading data...')
     granule_path, granule_bbox = download_slc_granule(granule, work_dir)
-    orbit_path = utils.download_orbit(granule, work_dir)
+    # orbit_path = utils.download_orbit(granule, work_dir, orbit_type='AUX_RESORB')
+    orbit_path = utils.download_orbit(granule, work_dir)#, orbit_type='AUX_POEORB')
     db_path = utils.download_burst_db(work_dir)
     dem_path = work_dir / 'dem.tif'
-    utils.download_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
+    dem.download_opera_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
     return granule_path, orbit_path, db_path, dem_path
 
 
