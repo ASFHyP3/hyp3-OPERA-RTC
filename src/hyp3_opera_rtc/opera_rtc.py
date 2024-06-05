@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 from jinja2 import Template
 
@@ -9,13 +9,22 @@ from hyp3_opera_rtc.prep_slc import prep_slc
 
 def render_runconfig(
     config_path: Path,
-    granule_path: Path,
-    orbit_path: Path,
-    db_path: Path,
-    dem_path: Path,
-    scratch_dir: Path,
-    output_dir: Path,
+    granule_name: str,
+    orbit_name: str,
+    db_name: str,
+    dem_name: str,
+    bursts: Iterable[str] = None,
+    container_base_path: Path = Path('/home/rtc_user/scratch'),
 ):
+    input_dir = container_base_path / 'input'
+    scratch_dir = container_base_path / 'scratch'
+    output_dir = container_base_path / 'output'
+
+    granule_path = input_dir / granule_name
+    orbit_path = input_dir / orbit_name
+    db_path = input_dir / db_name
+    dem_path = input_dir / dem_name
+
     runconfig_dict = {
         'granule_path': str(granule_path),
         'orbit_path': str(orbit_path),
@@ -24,6 +33,8 @@ def render_runconfig(
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
     }
+    if bursts is not None:
+        runconfig_dict['bursts'] = bursts
 
     template_dir = Path(__file__).parent / 'templates'
     with open(template_dir / 'runconfig.yml', 'r') as file:
@@ -36,6 +47,7 @@ def render_runconfig(
 
 def opera_rtc(
     granule: str,
+    bursts: Optional[str] = None,
     use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
@@ -55,7 +67,7 @@ def opera_rtc(
     [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
     granule_path, orbit_path, db_path, dem_path = prep_slc(granule, use_resorb=use_resorb, work_dir=input_dir)
     config_path = work_dir / 'runconfig.yml'
-    render_runconfig(config_path, granule_path, orbit_path, db_path, dem_path, scratch_dir, output_dir)
+    render_runconfig(config_path, granule_path.name, orbit_path.name, db_path.name, dem_path.name, bursts)
 
 
 def main():
@@ -65,13 +77,10 @@ def main():
     python -m hyp3_opera_rtc ++process opera_rtc S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granule', help='S1 granule to create an RTC for.')
-    parser.add_argument(
-        '--use-resorb',
-        action='store_true',
-        help='Use RESORB orbits instead of POEORB orbits',
-    )
-    parser.add_argument('--work-dir', default=None, help='Working directory for processing')
+    parser.add_argument('granule', type=str, help='S1 granule to create an RTC for.')
+    parser.add_argument('--bursts', nargs='+', type=str, help='JPL burst id to process')
+    parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB')
+    parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
     args = parser.parse_args()
 

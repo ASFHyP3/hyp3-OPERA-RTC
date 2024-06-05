@@ -143,7 +143,7 @@ def download_orbit(granule_name: str, output_dir: Path, orbit_type: Optional[str
         esa_credentials=get_esa_credentials(),
         orbit_types=orbit_type,
     )
-    return orbit_path
+    return Path(orbit_path)
 
 
 def download_dem_for_footprint(dem_path: Path, footprint: Polygon) -> Path:

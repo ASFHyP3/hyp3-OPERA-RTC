@@ -135,11 +135,12 @@ RunConfig:
                         # Required. List of SAFE files (min=1)
                         safe_file_path:
                             - {{  granule_path  }}
+                        # Optional. Burst ID to process (empty for all bursts)
+                        burst_id: {% if bursts %}{% for item in bursts %}
+                            - {{ item }}{% endfor %}{% endif %}
                         # Required. List of orbit (EOF) files (min=1)
                         orbit_file_path:
                             - {{  orbit_path  }}
-                        # Burst IDs to process. Leave empty to process all bursts.
-                        burst_id: []
                         # Location from where the source data can be retrieved (URL or DOI)
                         source_data_access: "https://search.asf.alaska.edu/#/?dataset=SENTINEL-1&productTypes=SLC"
 
