@@ -40,7 +40,7 @@ def download_slc_granule(granule_name: str, output_dir: Path, unzip: bool = Fals
 
         if not out_path.exists():
             with ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall('.')
+                zip_ref.extractall(output_dir)
 
         if zip_path.exists():
             zip_path.unlink()
@@ -64,7 +64,7 @@ def prep_slc(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    granule_path, granule_bbox = download_slc_granule(granule, work_dir)
+    granule_path, granule_bbox = download_slc_granule(granule, work_dir, unzip=True)
     orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
     orbit_path = utils.download_orbit(granule, work_dir, orbit_type=orbit_type)
     db_path = utils.download_burst_db(work_dir)
