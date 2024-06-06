@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyp3_opera_rtc"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [
     {name="tools-bot", email="UAF-asf-apd@alaska.edu"},
 ]
@@ -22,10 +22,12 @@ classifiers=[
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "hyp3lib>=3,<4",
-    "asf_search",
-    "rasterio",
-    "dem_stitcher"
+    "gdal",
+    "numpy",
+    "shapely",
+    "requests",
+    "urllib3",
+    "lxml",
 ]
 dynamic = ["version", "readme"]
 

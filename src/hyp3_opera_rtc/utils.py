@@ -1,23 +1,20 @@
+import cgi
 import logging
 import netrc
 import os
-import urllib
+from os.path import basename
 from pathlib import Path
 from platform import system
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
+from urllib.parse import urlparse
+from zipfile import ZipFile
 
-import numpy as np
-import rasterio
+import lxml.etree as ET
 import requests
-import shapely
-from dem_stitcher import stitch_dem
-from hyp3lib.get_orb import downloadSentinelOrbitFile
 from osgeo import gdal
 from requests.adapters import HTTPAdapter
-from shapely.geometry import LinearRing, Polygon
+from shapely.geometry import Polygon, box
 from urllib3.util.retry import Retry
-
-from hyp3_opera_rtc import utils
 
 
 gdal.UseExceptions()
@@ -25,11 +22,6 @@ log = logging.getLogger(__name__)
 ESA_HOST = 'dataspace.copernicus.eu'
 EARTHDATA_HOST = 'urs.earthdata.nasa.gov'
 DEM_URL = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1'
-AUTH_URL = (
-    'https://urs.earthdata.nasa.gov/oauth/authorize?response_type=code&client_id=BO_n7nTIlMljdvU6kRRB3g'
-    '&redirect_uri=https://auth.asf.alaska.edu/login&app_type=401'
-)
-PROFILE_URL = 'https://urs.earthdata.nasa.gov/profile'
 
 
 def get_netrc() -> Path:
@@ -121,46 +113,66 @@ def get_earthdata_credentials() -> Tuple[str, str]:
     )
 
 
-def download_orbit(granule_name: str, output_dir: Path, orbit_type: Optional[str] = None) -> Path:
-    """Download a S1 orbit file. Prefer using the ESA API,
-    but fallback to ASF if needed.
+def _get_download_path(url: str, content_disposition: str = None, directory: Union[Path, str] = '.'):
+    filename = None
+    if content_disposition is not None:
+        _, params = cgi.parse_header(content_disposition)
+        filename = params.get('filename')
+    if not filename:
+        filename = basename(urlparse(url).path)
+    if not filename:
+        raise ValueError(f'could not determine download path for: {url}')
+    return Path(directory) / filename
+
+
+def download_file(
+    url: str,
+    directory: Union[Path, str] = '.',
+    chunk_size=2**20,
+    auth: Optional[Tuple[str, str]] = None,
+    token: Optional[str] = None,
+    retries=2,
+    backoff_factor=1,
+) -> str:
+    """Download a file
 
     Args:
-        granule_name: Name of the granule to download
-        output_dir: Directory to save the orbit file in
+        url: URL of the file to download
+        directory: Directory location to place files into
+        chunk_size: Size to chunk the download into
+        auth: Username and password for HTTP Basic Auth
+        token: Token for HTTP Bearer authentication
+        retries: Number of retries to attempt
+        backoff_factor: Factor for calculating time between retries
 
     Returns:
-        Path to the downloaded orbit file
+        download_path: The path to the downloaded file
     """
-    if orbit_type is None:
-        orbit_type = ('AUX_POEORB', 'AUX_RESORB')
-    elif isinstance(orbit_type, str):
-        orbit_type = tuple([orbit_type])
+    logging.info(f'Downloading {url}')
 
-    orbit_path, _ = downloadSentinelOrbitFile(
-        granule_name,
-        str(output_dir),
-        esa_credentials=get_esa_credentials(),
-        orbit_types=orbit_type,
+    session = requests.Session()
+    session.auth = auth
+    if token:
+        session.headers.update({'Authorization': f'Bearer {token}'})
+
+    retry_strategy = Retry(
+        total=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=[429, 500, 502, 503, 504],
     )
-    return Path(orbit_path)
+    session.mount('https://', HTTPAdapter(max_retries=retry_strategy))
+    session.mount('http://', HTTPAdapter(max_retries=retry_strategy))
 
+    with session.get(url, stream=True) as s:
+        download_path = _get_download_path(s.url, s.headers.get('content-disposition'), directory)
+        s.raise_for_status()
+        with open(download_path, 'wb') as f:
+            for chunk in s.iter_content(chunk_size=chunk_size):
+                if chunk:
+                    f.write(chunk)
+    session.close()
 
-def download_dem_for_footprint(dem_path: Path, footprint: Polygon) -> Path:
-    """Download a DEM for the given footprint.
-    Args:
-        dem_path: The path to download the DEM to.
-        footprint: The footprint to download a DEM for.
-
-    Returns:
-        Path to the downloaded DEM
-    """
-    if not dem_path.exists():
-        X, p = stitch_dem(footprint.bounds, dem_name='glo_30', dst_ellipsoidal_height=False, dst_area_or_point='Point')
-        with rasterio.open(dem_path, 'w', **p) as ds:
-            ds.write(X, 1)
-            ds.update_tags(AREA_OR_POINT='Point')
-    return dem_path
+    return Path(download_path)
 
 
 def download_burst_db(save_dir: Path) -> Path:
@@ -175,136 +187,34 @@ def download_burst_db(save_dir: Path) -> Path:
     """
     db_path = save_dir / 'opera-burst-bbox-only.sqlite3'
     url = 'https://ffwilliams2-shenanigans.s3.us-west-2.amazonaws.com/opera/opera-burst-bbox-only.sqlite3'
-
-    if not db_path.exists():
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(db_path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
+    download_file(url, save_dir)
     return db_path
 
 
-def check_dateline(poly):
-    """
-    Split `poly` if it crosses the dateline.
+def download_s1_granule(granule, save_dir: Path) -> Path:
+    mission = granule[0] + granule[2]
+    product_type = granule[7:10]
+    if product_type == 'GRD':
+        product_type += '_' + granule[10] + granule[14]
+    url = f'https://sentinel1.asf.alaska.edu/{product_type}/{mission}/{granule}.zip'
+    creds = get_earthdata_credentials()
+    download_file(url, save_dir, auth=creds, chunk_size=10 * (2**20))
+    return save_dir / f'{granule}.zip'
 
-    Parameters
-    ----------
-    poly : shapely.geometry.Polygon
-        Input polygon.
 
-    Returns
-    -------
-    polys : list of shapely.geometry.Polygon
-        A list containing: the input polygon if it didn't cross the dateline, or
-        two polygons otherwise (one on either side of the dateline).
-
-    """
-    x_min, _, x_max, _ = poly.bounds
-
-    # Check dateline crossing
-    if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
-        dateline = shapely.wkt.loads('LINESTRING( 180.0 -90.0, 180.0 90.0)')
-
-        # build new polygon with all longitudes between 0 and 360
-        x, y = poly.exterior.coords.xy
-        new_x = (k + (k <= 0.0) * 360 for k in x)
-        new_ring = LinearRing(zip(new_x, y))
-
-        # Split input polygon
-        # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
-        merged_lines = shapely.ops.linemerge([dateline, new_ring])
-        border_lines = shapely.ops.unary_union(merged_lines)
-        decomp = shapely.ops.polygonize(border_lines)
-
-        polys = list(decomp)
-
-        for polygon_count in range(len(polys)):
-            x, y = polys[polygon_count].exterior.coords.xy
-            # if there are no longitude values above 180, continue
-            if not any([k > 180 for k in x]):
-                continue
-
-            # otherwise, wrap longitude values down by 360 degrees
-            x_wrapped_minus_360 = np.asarray(x) - 360
-            polys[polygon_count] = Polygon(zip(x_wrapped_minus_360, y))
-
+def get_s1_granule_bbox(granule_path: Path):
+    if granule_path.suffix == '.zip':
+        with ZipFile(granule_path, 'r') as z:
+            manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
+            with z.open(manifest_path) as m:
+                manifest = ET.parse(m).getroot()
     else:
-        # If dateline is not crossed, treat input poly as list
-        polys = [poly]
+        manifest_path = granule_path / 'manifest.safe'
+        manifest = ET.parse(manifest_path).getroot()
 
-    return polys
-
-
-class AuthenticationError(Exception):
-    pass
-
-
-def get_authenticated_session() -> requests.Session:
-    """Log into EarthData using credentials for `urs.earthdata.nasa.gov` from either the provided
-     credentials or a `.netrc` file.
-
-    Returns:
-        An authenticated HyP3 Session
-    """
-    s = requests.Session()
-    auth = utils.get_earthdata_credentials()
-
-    response = s.get(AUTH_URL, auth=auth)
-    auth_error_message = (
-        'Was not able to authenticate with credentials provided\n'
-        'This could be due to invalid credentials or a connection error.'
-    )
-
-    parsed_url = urllib.parse.urlparse(response.url)
-    query_params = urllib.parse.parse_qs(parsed_url.query)
-    error_msg = query_params.get('error_msg')
-    resolution_url = query_params.get('resolution_url')
-
-    if error_msg is not None and resolution_url is not None:
-        raise AuthenticationError(f'{error_msg[0]}: {resolution_url[0]}')
-
-    if error_msg is not None and 'Please update your profile' in error_msg[0]:
-        raise AuthenticationError(f'{error_msg[0]}: {PROFILE_URL}')
-
-    try:
-        response.raise_for_status()
-    except requests.HTTPError:
-        raise AuthenticationError(auth_error_message)
-
-    return s
-
-
-def download_earthdata_file(
-    url: str, out_dir: Path, session: Optional[requests.Session] = None, retries=2, backoff_factor=1
-) -> Path:
-    """Download a file from EarthData using the provided URL.
-    Args:
-        url: URL of the file to download
-        out_dir: Directory to save the downloaded file in
-        retries: Number of retries to attempt
-        backoff_factor: Factor for calculating time between retries
-    Returns:
-        download_path: The path to the downloaded file
-    """
-    filepath = out_dir / url.split('/')[-1]
-    if session is None:
-        session = get_authenticated_session()
-    retry_strategy = Retry(
-        total=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=[429, 500, 502, 503, 504],
-    )
-
-    session.mount('https://', HTTPAdapter(max_retries=retry_strategy))
-    session.mount('http://', HTTPAdapter(max_retries=retry_strategy))
-    with session.get(url, stream=True) as s:
-        s.raise_for_status()
-        with open(filepath, 'wb') as f:
-            for chunk in s.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-    session.close()
-
-    return filepath
+    frame_element = [x for x in manifest.findall('.//metadataObject') if x.get('ID') == 'measurementFrameSet'][0]
+    frame_string = frame_element.find('.//{http://www.opengis.net/gml}coordinates').text
+    coord_strings = [pair.split(',') for pair in frame_string.split(' ')]
+    coords = [(float(lon), float(lat)) for lat, lon in coord_strings]
+    footprint = Polygon(coords)
+    return box(*footprint.bounds)

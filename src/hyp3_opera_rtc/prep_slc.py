@@ -1,51 +1,8 @@
 import argparse
 from pathlib import Path
-from typing import Optional, Tuple
-from zipfile import ZipFile
+from typing import Optional
 
-import asf_search
-from shapely.geometry import Polygon, shape
-
-from hyp3_opera_rtc import dem, utils
-
-
-def download_slc_granule(granule_name: str, output_dir: Path, unzip: bool = False) -> Tuple[Path, Polygon]:
-    """Download a S1 granule using asf_search. Return its path
-    and buffered extent.
-
-    Args:
-        granule_name: Name of the granule to download
-        output_dir: Directory to save the granule in
-
-    Returns:
-        Tuple of the granule path and its extent as a Polygon
-    """
-    username, password = utils.get_earthdata_credentials()
-    session = asf_search.ASFSession().auth_with_creds(username, password)
-    if not granule_name.endswith('-SLC'):
-        granule_name += '-SLC'
-
-    result = asf_search.granule_search([granule_name])[0]
-    bbox = shape(result.geojson()['geometry'])
-
-    if not unzip:
-        out_path = output_dir / f'{granule_name[:-4]}.zip'
-        result.download(path=output_dir, session=session)
-    else:
-        zip_path = output_dir / f'{granule_name[:-4]}.zip'
-        out_path = output_dir / f'{granule_name[:-4]}.SAFE'
-
-        if not out_path.exists() and not zip_path.exists():
-            result.download(path=output_dir, session=session)
-
-        if not out_path.exists():
-            with ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(output_dir)
-
-        if zip_path.exists():
-            zip_path.unlink()
-
-    return out_path, bbox
+from hyp3_opera_rtc import dem, orbit, utils
 
 
 def prep_slc(
@@ -64,12 +21,18 @@ def prep_slc(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    granule_path, granule_bbox = download_slc_granule(granule, work_dir, unzip=False)
+    granule_path = work_dir / f'{granule}.zip'
+    utils.download_s1_granule(granule, work_dir)
+
     orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
-    orbit_path = utils.download_orbit(granule, work_dir, orbit_type=orbit_type)
+    orbit_path = orbit.download_sentinel_orbit_file(granule, work_dir, orbit_types=[orbit_type])
+
     db_path = utils.download_burst_db(work_dir)
+
+    granule_bbox = utils.get_s1_granule_bbox(granule_path)
     dem_path = work_dir / 'dem.tif'
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
+
     return granule_path, orbit_path, db_path, dem_path
 
 
