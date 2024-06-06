@@ -72,7 +72,7 @@ def opera_rtc(
     try:
         from opera.scripts.pge_main import pge_start
     except ImportError:
-        raise ImportError('OPERA PGE script is not present. Check that you are running this from within the OPERA PGE container.')
+        raise ImportError('OPERA PGE script is not present. Are you running from within the OPERA PGE container?')
 
     pge_start(str(config_path.resolve()))
 

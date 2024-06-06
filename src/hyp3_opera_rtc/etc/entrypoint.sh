@@ -1,4 +1,4 @@
-#!/bin/bash bash
+#!/bin/bash --login
 
 # Taken from OPERA PGE entrypoint
 DOCKER_ENTRYPOINT_SCRIPT_DIR=$(dirname ${BASH_SOURCE[0]})
