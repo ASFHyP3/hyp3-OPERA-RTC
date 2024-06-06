@@ -69,6 +69,13 @@ def opera_rtc(
     config_path = work_dir / 'runconfig.yml'
     render_runconfig(config_path, granule_path.name, orbit_path.name, db_path.name, dem_path.name, bursts)
 
+    try:
+        from opera.scripts.pge_main import pge_start
+    except ImportError:
+        raise ImportError('OPERA PGE script is not present. Check that you are running this from within the OPERA PGE container.')
+
+    pge_start(str(config_path.resolve()))
+
 
 def main():
     """Create an OPERA RTC

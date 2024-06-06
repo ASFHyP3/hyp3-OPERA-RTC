@@ -64,7 +64,7 @@ def prep_slc(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    granule_path, granule_bbox = download_slc_granule(granule, work_dir, unzip=True)
+    granule_path, granule_bbox = download_slc_granule(granule, work_dir, unzip=False)
     orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
     orbit_path = utils.download_orbit(granule, work_dir, orbit_type=orbit_type)
     db_path = utils.download_burst_db(work_dir)
