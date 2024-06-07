@@ -1,19 +1,22 @@
 import argparse
 from pathlib import Path
-from typing import Optional
+from shutil import make_archive
+from typing import Iterable, Optional
+
+from burst2safe.burst2safe import burst2safe
 
 from hyp3_opera_rtc import dem, orbit, utils
 
 
-def prep_slc(
-    granule: str,
+def prep_burst(
+    granules: Iterable[str],
     use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
-    """Prepare data for SLC-based processing.
+    """Prepare data for burst-based processing.
 
     Args:
-        granules: Sentinel-1 SLC granule to create RTC datasets for
+        granules: Sentinel-1 burst SLC granules to create RTC dataset for
         use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
@@ -21,8 +24,10 @@ def prep_slc(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    granule_path = work_dir / f'{granule}.zip'
-    utils.download_s1_granule(granule, work_dir)
+    granule_path = burst2safe(granules=granules, work_dir=work_dir)
+    make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
+    granule_path = granule_path.with_suffix('.zip')
+    granule = granule_path.with_suffix('').name
 
     orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
     orbit_path = orbit.download_sentinel_orbit_file(granule, work_dir, orbit_types=[orbit_type])
@@ -40,16 +45,16 @@ def main():
     """Prep SLC entrypoint.
 
     Example command:
-    python -m hyp3_opera_rtc ++process prep_slc S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
+    python -m hyp3_opera_rtc ++process prep_burst S1_136231_IW2_20200604T022312_VV_7C85-BURST S1_136231_IW2_20200604T022312_VH_7C85-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granule', help='S1 granule to load data for.')
+    parser.add_argument('granules', nargs='+', help='S1 granule to load data for.')
     parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB orbits')
     parser.add_argument('--work-dir', default=None, help='Working directory for processing')
 
     args = parser.parse_args()
 
-    prep_slc(**args.__dict__)
+    prep_burst(**args.__dict__)
 
 
 if __name__ == '__main__':
