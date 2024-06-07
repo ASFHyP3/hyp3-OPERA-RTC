@@ -89,5 +89,5 @@ def download_opera_dem_for_footprint(output_path, footprint):
     gdal.Translate(str(output_path), ds, format='GTiff')
 
     ds = None
-    [f.unlink() for f in input_files + [vrt_filepath]]
+    [Path(f).unlink() for f in input_files + [vrt_filepath]]
     return output_path
