@@ -1,6 +1,6 @@
 # HyP3 OPERA-RTC
 
-**ALL CREDIT FOR THIS PLUGIN'S RTC PROCESSING GOES TO THE JPL OPERA TEAM. THIS PLUGIN MERELY ALLOWS US TO RUN THEIR WORKFLOW IN A HYP3 ENVIRONMENT.**
+**ALL CREDIT FOR THIS PLUGIN'S RTC PROCESSING GOES TO THE [JPL OPERA TEAM](https://www.jpl.nasa.gov/go/opera). THIS PLUGIN MERELY ALLOWS US TO RUN THEIR WORKFLOW IN A HYP3 ENVIRONMENT.**
 
 HyP3 plugin for OPERA-RTC processing
 
@@ -18,7 +18,7 @@ If you haven't set up a `.netrc` file
 before, check out this [guide](https://harmony.earthdata.nasa.gov/docs#getting-started) to get started.
 
 ## Usage
-This plugin is designed to run within the HyP3 processing system, and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container. Currently, this container is not publicly available, but it likely will be in the near future.
+This plugin is designed to run within the HyP3 processing system, and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container (see architecture section below). Currently, this container is not publicly available, but it likely will be in the near future.
 
 For this reason, the plugin is only runnable via the docker container.
 
@@ -38,7 +38,7 @@ docker run -it --rm \
     hyp3-opera-rtc:latest ++process opera_rtc \
     S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
 ```
-Where you replace `S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F` with your desired SLC to generate OPERA RTC granules for.
+Where you replace `S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F` with the name of the Sentinel-1 SLC scene to generate OPERA RTC granules for.
 
 All options for the workflow can be explored by calling `docker run -it --rm hyp3-opera-rtc:latest ++process opera_rtc --help`.
 
@@ -47,12 +47,12 @@ The plugin is composed of three nested docker environments that depend on eachot
 
 ```
 +-------------------------+
-|        HyP3 (ASF)       |
+|       HyP3 (ASF)        |
 |  +-------------------+  |
-|  |     PGE (JPL)     |  |
+|  |    PGE (OPERA)    |  |
 |  |  +-------------+  |  |
 |  |  |             |  |  |
-|  |  |  SAS (JPL)  |  |  |
+|  |  | SAS (OPERA) |  |  |
 |  |  |             |  |  |
 |  |  +-------------+  |  |
 |  |                   |  |
@@ -60,3 +60,8 @@ The plugin is composed of three nested docker environments that depend on eachot
 |                         |
 +-------------------------+
 ```
+The Alaska Satellite Facility's Hybrid Pluggable Processing Pipeline (HyP3) container is housed in this repository. It is responsible for marshalling the input data, calling the OPERA PGE container, and uploading the results to an S3 bucket. It takes the place of the Process Control & data Management (PCM) container that would be used within JPL's Science Data System (SDS).
+
+The Product Generation Executable (PGE) container was created by the OPERA JPL team and is housed in the [nasa/opera-sds-pge](https://github.com/nasa/opera-sds-pge) repository. It is responsible for calling the OPERA SAS container and creating the sidecar iso.xml and STAC JSON metadata files.
+
+The Science Algorithm Software (SAS) container was created by the OPERA JPL team and is housed in the [opera-adt/rtc](https://github.com/opera-adt/rtc) repository. It is responsible for performing the actual RTC calculations and creating the HDF5 metadata file.
