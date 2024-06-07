@@ -1,7 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from pathlib import Path
-
 import numpy as np
 import shapely
 from osgeo import gdal
@@ -84,10 +83,10 @@ def download_opera_dem_for_footprint(output_path, footprint):
         executor.map(utils.download_file, urls, [output_dir] * n, [4*(2**20)] * n, [creds] * n)
 
     vrt_filepath = output_dir / 'dem.vrt'
-    input_files = [output_dir / Path(url).name for url in urls]
-    gdal.BuildVRT(output_dir / 'dem.vrt', input_files)
-    ds = gdal.Open(vrt_filepath, gdal.GA_ReadOnly)
-    gdal.Translate(output_path, ds, format='GTiff')
+    input_files = [str(output_dir / Path(url).name) for url in urls]
+    gdal.BuildVRT(str(output_dir / 'dem.vrt'), input_files)
+    ds = gdal.Open(str(vrt_filepath), gdal.GA_ReadOnly)
+    gdal.Translate(str(output_path), ds, format='GTiff')
 
     ds = None
     [f.unlink() for f in input_files + [vrt_filepath]]
