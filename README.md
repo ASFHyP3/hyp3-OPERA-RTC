@@ -45,18 +45,18 @@ All options for the workflow can be explored by calling `docker run -it --rm hyp
 ## Architecture
 The plugin is composed of three nested docker environments that depend on eachother. They are laid out as below:
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#D3D3D3', 'fontSize': '16px', 'fontFamily': 'Arial'}}}%%
-graph TB
-  classDef greyBox fill:#D3D3D3,stroke:#333,stroke-width:2px
-
-  subgraph A[HyP3]
-    class A greyBox
-    subgraph B[PGE]
-      class B greyBox
-      subgraph C[SAS]
-        class C greyBox
-      end
-    end
-  end
+```bash
++-------------------------+
+|        HyP3 (ASF)       |
+|  +-------------------+  |
+|  |     PGE (JPL)     |  |
+|  |  +-------------+  |  |
+|  |  |             |  |  |
+|  |  |  SAS (JPL)  |  |  |
+|  |  |             |  |  |
+|  |  +-------------+  |  |
+|  |                   |  |
+|  +-------------------+  |
+|                         |
++-------------------------+
 ```
