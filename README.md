@@ -1,8 +1,8 @@
 # HyP3 OPERA-RTC
 
-**ALL CREDIT FOR THIS PLUGIN'S RTC PROCESSING GOES TO THE [JPL OPERA TEAM](https://www.jpl.nasa.gov/go/opera). THIS PLUGIN MERELY ALLOWS US TO RUN THEIR WORKFLOW IN A HYP3 ENVIRONMENT.**
+A HyP3 plugin for OPERA-RTC processing
 
-HyP3 plugin for OPERA-RTC processing
+**ALL CREDIT FOR THIS PLUGIN'S RTC PRODUCTS GOES TO THE [JPL OPERA TEAM](https://www.jpl.nasa.gov/go/opera). THIS PLUGIN MERELY ALLOWS US TO RUN THEIR WORKFLOW IN A HYP3 ENVIRONMENT.**
 
 ## Earthdata Login and ESA Credentials
 
@@ -13,9 +13,6 @@ If you do not already have an Earthdata account, you can sign up [here](https://
 If you do not already have a CDSE account, you can sign up [here](https://dataspace.copernicus.eu).
 
 Your credentials can be passed to the workflows via environmental variables that are passed to the docker container (`EARTHDATA_USERNAME`, `EARTHDATA_PASSWORD`, `ESA_USERNAME`, and `ESA_PASSWORD`).
-
-If you haven't set up a `.netrc` file
-before, check out this [guide](https://harmony.earthdata.nasa.gov/docs#getting-started) to get started.
 
 ## Usage
 This plugin is designed to run within the HyP3 processing system, and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container (see architecture section below). Currently, this container is not publicly available, but it likely will be in the near future.
