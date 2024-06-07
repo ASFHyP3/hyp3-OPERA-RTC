@@ -9,5 +9,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.0]
 
 ### Added
+* working Dockerfile
 * capability to stage data for full-slc OPERA RTC run
+* capability to run OPERA RTC from within docker container
 

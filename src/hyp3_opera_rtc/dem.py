@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from pathlib import Path
+
 import numpy as np
 import shapely
 from osgeo import gdal
@@ -80,7 +81,7 @@ def download_opera_dem_for_footprint(output_path, footprint):
     creds = utils.get_earthdata_credentials()
     with ThreadPoolExecutor() as executor:
         n = len(urls)
-        executor.map(utils.download_file, urls, [output_dir] * n, [4*(2**20)] * n, [creds] * n)
+        executor.map(utils.download_file, urls, [output_dir] * n, [4 * (2**20)] * n, [creds] * n)
 
     vrt_filepath = output_dir / 'dem.vrt'
     input_files = [str(output_dir / Path(url).name) for url in urls]
