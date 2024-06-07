@@ -4,7 +4,7 @@ from typing import Iterable, Optional
 
 from jinja2 import Template
 
-from hyp3_opera_rtc.prep_slc import prep_slc
+from hyp3_opera_rtc.prep_slc import prep_bursts, prep_slc
 
 
 def render_runconfig(
@@ -46,7 +46,7 @@ def render_runconfig(
 
 
 def opera_rtc(
-    granule: str,
+    granules: Iterable[str],
     bursts: Optional[str] = None,
     use_resorb: bool = True,
     work_dir: Optional[Path] = None,
@@ -54,7 +54,8 @@ def opera_rtc(
     """Prepare data for SLC-based processing.
 
     Args:
-        granules: List of Sentinel-1 level-0 granules to back-project
+        granules: List of Sentinel-1 level-1 granules to back-project
+        bursts: List of JPL burst ids to process
         use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
@@ -65,7 +66,14 @@ def opera_rtc(
     input_dir = work_dir / 'input'
     output_dir = work_dir / 'output'
     [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
-    granule_path, orbit_path, db_path, dem_path = prep_slc(granule, use_resorb=use_resorb, work_dir=input_dir)
+
+    if all([x.ends_with('BURST') for x in granules]):
+        granule_path, orbit_path, db_path, dem_path = prep_bursts(granules, use_resorb=use_resorb, work_dir=input_dir)
+    else:
+        if len(granules) > 1:
+            raise ValueError('Only one granule is supported for SLC processing')
+        granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], use_resorb=use_resorb, work_dir=input_dir)
+
     config_path = work_dir / 'runconfig.yml'
     render_runconfig(config_path, granule_path.name, orbit_path.name, db_path.name, dem_path.name, bursts)
 
@@ -84,7 +92,7 @@ def main():
     python -m hyp3_opera_rtc ++process opera_rtc S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granule', type=str, help='S1 granule to create an RTC for.')
+    parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')
     parser.add_argument('--bursts', nargs='+', type=str, help='JPL burst id to process')
     parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
