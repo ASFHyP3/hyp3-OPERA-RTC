@@ -45,7 +45,7 @@ All options for the workflow can be explored by calling `docker run -it --rm hyp
 ## Architecture
 The plugin is composed of three nested docker environments that depend on eachother. They are laid out as below:
 
-```bash
+```
 +-------------------------+
 |        HyP3 (ASF)       |
 |  +-------------------+  |
