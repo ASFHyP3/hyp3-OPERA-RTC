@@ -47,10 +47,9 @@ The plugin is composed of three nested docker environments that depend on eachot
 
 ```mermaid
 graph TB
-  subgraph A[Outer Box]
-    subgraph B[Middle Box]
-      subgraph C[Inner Box]
-        D[Content]
+  subgraph A[ASF HyP3]
+    subgraph B[JPL PGE]
+      subgraph C[JPL SAS]
       end
     end
   end
