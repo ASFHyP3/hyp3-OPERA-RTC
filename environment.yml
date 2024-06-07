@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python>=3.9
+  - python<3.10
   - pip
   # For running
   - gdal
@@ -12,6 +12,7 @@ dependencies:
   - requests
   - urllib3
   - lxml
+  - jinja2
   # For packaging, and testing
   - setuptools
   - setuptools_scm
