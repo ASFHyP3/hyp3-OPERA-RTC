@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:latest
+FROM opera_pge/rtc_s1:2.1.1
 
 # For opencontainers label definitions, see:
 #    https://github.com/opencontainers/image-spec/blob/master/annotations.md
@@ -11,38 +11,9 @@ LABEL org.opencontainers.image.url="https://github.com/ASFHyP3/hyp3-OPERA-RTC"
 LABEL org.opencontainers.image.source="https://github.com/ASFHyP3/hyp3-OPERA-RTC"
 LABEL org.opencontainers.image.documentation="https://hyp3-docs.asf.alaska.edu"
 
-# Dynamic lables to define at build time via `docker build --label`
-# LABEL org.opencontainers.image.created=""
-# LABEL org.opencontainers.image.version=""
-# LABEL org.opencontainers.image.revision=""
+RUN conda install -c conda-forge -y git
+COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
+RUN python -m pip install --no-cache-dir /home/rtc_user/hyp3-opera-rtc/
 
-ARG DEBIAN_FRONTEND=noninteractive
-ENV PYTHONDONTWRITEBYTECODE=true
-
-RUN apt-get update && apt-get install -y --no-install-recommends unzip vim && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-ARG CONDA_UID=1000
-ARG CONDA_GID=1000
-
-RUN groupadd -g "${CONDA_GID}" --system conda && \
-    useradd -l -u "${CONDA_UID}" -g "${CONDA_GID}" --system -d /home/conda -m  -s /bin/bash conda && \
-    chown -R conda:conda /opt && \
-    echo ". /opt/conda/etc/profile.d/conda.sh" >> /home/conda/.profile && \
-    echo "conda activate base" >> /home/conda/.profile
-
-
-USER ${CONDA_UID}
-SHELL ["/bin/bash", "-l", "-c"]
-WORKDIR /home/conda/
-
-COPY --chown=${CONDA_UID}:${CONDA_GID} . /hyp3-opera-rtc/
-
-RUN mamba env create -f /hyp3-opera-rtc/environment.yml && \
-    conda clean -afy && \
-    conda activate hyp3-opera-rtc && \
-    sed -i 's/conda activate base/conda activate hyp3-opera-rtc/g' /home/conda/.profile && \
-    python -m pip install --no-cache-dir /hyp3-opera-rtc
-
-ENTRYPOINT ["/hyp3-opera-rtc/src/hyp3_opera_rtc/etc/entrypoint.sh"]
+ENTRYPOINT ["/home/rtc_user/hyp3-opera-rtc/src/hyp3_opera_rtc/etc/entrypoint.sh"]
 CMD ["-h"]

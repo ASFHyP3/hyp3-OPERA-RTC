@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyp3_opera_rtc"
-requires-python = ">=3.10"
+requires-python = "<3.10"
 authors = [
     {name="tools-bot", email="UAF-asf-apd@alaska.edu"},
 ]
@@ -22,10 +22,13 @@ classifiers=[
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "hyp3lib>=3,<4",
-    "asf_search",
-    "rasterio",
-    "dem_stitcher"
+    "gdal",
+    "numpy",
+    "shapely",
+    "requests",
+    "urllib3",
+    "lxml",
+    "jinja2",
 ]
 dynamic = ["version", "readme"]
 
@@ -42,6 +45,7 @@ Documentation = "https://hyp3-docs.asf.alaska.edu"
 
 [project.entry-points.hyp3]
 prep_slc = "hyp3_opera_rtc.prep_slc:main"
+opera_rtc = "hyp3_opera_rtc.opera_rtc:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

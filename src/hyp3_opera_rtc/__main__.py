@@ -14,13 +14,20 @@ def main():
     parser = argparse.ArgumentParser(prefix_chars='+', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '++process',
-        choices=['prep_slc'],
-        default='prep_slc',
+        choices=['prep_slc', 'opera_rtc'],
+        default='opera_rtc',
         help='Select the HyP3 entrypoint to use',  # HyP3 entrypoints are specified in `pyproject.toml`
     )
 
     args, unknowns = parser.parse_known_args()
-    process_entry_point = list(entry_points(group='hyp3', name=args.process))[0]
+    all_entry_points = entry_points()
+    hyp3_entry_points = [ep for ep in all_entry_points['hyp3'] if ep.name == args.process]
+
+    if not hyp3_entry_points:
+        print(f'No entry point found for {args.process}')
+        sys.exit(1)
+
+    process_entry_point = hyp3_entry_points[0]
 
     sys.argv = [args.process, *unknowns]
     sys.exit(process_entry_point.load()())

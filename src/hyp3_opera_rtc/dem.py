@@ -51,7 +51,7 @@ def check_antimeridean(poly):
     return polys
 
 
-def get_granule_url(lat: int, lon: int) -> str:
+def get_dem_granule_url(lat: int, lon: int) -> str:
     lat_tens = np.floor_divide(lat, 10) * 10
     lat_cardinal = 'S' if lat_tens < 0 else 'N'
 
@@ -77,16 +77,18 @@ def download_opera_dem_for_footprint(output_path, footprint):
     latlon_pairs = []
     for footprint in footprints:
         latlon_pairs += get_latlon_pairs(footprint)
-    urls = [get_granule_url(lat, lon) for lat, lon in latlon_pairs]
-    session = utils.get_authenticated_session()
+    urls = [get_dem_granule_url(lat, lon) for lat, lon in latlon_pairs]
+    creds = utils.get_earthdata_credentials()
     with ThreadPoolExecutor() as executor:
-        executor.map(utils.download_earthdata_file, urls, [output_dir] * len(urls), [session] * len(urls))
+        n = len(urls)
+        executor.map(utils.download_file, urls, [output_dir] * n, [4 * (2**20)] * n, [creds] * n)
 
     vrt_filepath = output_dir / 'dem.vrt'
-    input_files = [output_dir / Path(url).name for url in urls]
-    gdal.BuildVRT(output_dir / 'dem.vrt', input_files)
-    ds = gdal.Open(vrt_filepath, gdal.GA_ReadOnly)
-    gdal.Translate(output_path, ds, format='GTiff')
+    input_files = [str(output_dir / Path(url).name) for url in urls]
+    gdal.BuildVRT(str(output_dir / 'dem.vrt'), input_files)
+    ds = gdal.Open(str(vrt_filepath), gdal.GA_ReadOnly)
+    gdal.Translate(str(output_path), ds, format='GTiff')
 
     ds = None
-    [f.unlink() for f in input_files + [vrt_filepath]]
+    [Path(f).unlink() for f in input_files + [vrt_filepath]]
+    return output_path

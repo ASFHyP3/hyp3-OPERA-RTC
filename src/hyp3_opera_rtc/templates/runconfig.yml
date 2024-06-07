@@ -4,7 +4,7 @@
 
 RunConfig:
     # Name for the RunConfig, may be any string
-    Name: OPERA-RTC-S1-PGE-SAMPLE-CONFIG
+    Name: OPERA-RTC-S1-PGE
 
     Groups:
         # PGE-specific RunConfig section
@@ -22,8 +22,8 @@ RunConfig:
                 # as well as the path to the Orbit Ephemerides file(s)
                 # Paths must correspond to the file system within the Docker container
                 InputFilePaths:
-                    - /home/rtc_user/scratch/input_dir/S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F.zip
-                    - /home/rtc_user/scratch/input_dir/S1B_OPER_AUX_POEORB_OPOD_20210313T015827_V20180503T225942_20180505T005942.EOF
+                    - {{  granule_path  }}
+                    - {{  orbit_path  }}
 
             DynamicAncillaryFilesGroup:
                 # Map of ancillary file types to paths to the file
@@ -32,17 +32,17 @@ RunConfig:
                     # Path to the Digital Elevation Model
                     # Must be either a single .tif, or a .vrt that points to one
                     # or more .tif files
-                    dem_file: /home/rtc_user/scratch/input_dir/dem.tif
+                    dem_file: {{ dem_path  }}
 
                     # Burst database, must be an .sqlite3 file
-                    burst_database_file: /home/rtc_user/scratch/input_dir/opera-burst-bbox-only.sqlite3
+                    burst_database_file: {{ db_path  }}
 
             ProductPathGroup:
                 # Path to where output products should be stored
                 # Must correspond to the file system within the Docker container,
                 # and must have write permissions for the User/Group used with
                 # the "Docker run" command
-                OutputProductPath: /home/rtc_user/scratch/output_dir
+                OutputProductPath: {{  output_dir  }}
 
                 # Path to a scratch directory for the PGE and SAS to store
                 # intermediate files that will not be needed after PGE execution
@@ -50,7 +50,7 @@ RunConfig:
                 # Must correspond to the file system within the Docker container,
                 # and must have write permissions for the User/Group used with
                 # the "Docker run" command
-                ScratchPath: /home/rtc_user/scratch/scratch_dir
+                ScratchPath: {{  scratch_dir  }}
 
             PrimaryExecutable:
                 # Identifier for the PGE executable, should always be RTC_S1 for
@@ -134,37 +134,37 @@ RunConfig:
                     input_file_group:
                         # Required. List of SAFE files (min=1)
                         safe_file_path:
-                            - /home/rtc_user/scratch/input_dir/S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F.zip
+                            - {{  granule_path  }}
+                        # Optional. Burst ID to process (empty for all bursts)
+                        burst_id: {% if bursts %}{% for item in bursts %}
+                            - {{ item }}{% endfor %}{% endif %}
                         # Required. List of orbit (EOF) files (min=1)
                         orbit_file_path:
-                            - /home/rtc_user/scratch/input_dir/S1B_OPER_AUX_POEORB_OPOD_20210313T015827_V20180503T225942_20180505T005942.EOF
-                        # Burst IDs to process. Leave empty to process all bursts.
-                        burst_id:
-                            - t069_147170_iw1
+                            - {{  orbit_path  }}
                         # Location from where the source data can be retrieved (URL or DOI)
                         source_data_access: "https://search.asf.alaska.edu/#/?dataset=SENTINEL-1&productTypes=SLC"
 
                     # This section should match the DynamicAncillaryFilesGroup of the PGE RunConfig
                     dynamic_ancillary_file_group:
                         # Digital elevation model
-                        dem_file: /home/rtc_user/scratch/input_dir/dem.tif
+                        dem_file: {{  dem_path  }}
                         dem_file_description: "Digital Elevation Model (DEM) for the NASA OPERA project version 1.1 (v1.1) based on the Copernicus DEM 30-m and Copernicus 90-m referenced to the WGS84 ellipsoid"
 
                     static_ancillary_file_group:
                         # burst database sqlite file
-                        burst_database_file: /home/rtc_user/scratch/input_dir/opera-burst-bbox-only.sqlite3
+                        burst_database_file: {{  db_path  }}
 
                     product_group:
                         product_version: "1.0"
 
                         # This should match the path used for OutputProductPath
-                        product_path: /home/rtc_user/scratch/output_dir
+                        product_path: {{  output_dir  }}
 
                         # This should match the path used for ScratchPath
-                        scratch_path: /home/rtc_user/scratch/scratch_dir
+                        scratch_path: {{  scratch_dir  }}
 
                         # This should match the path used for OutputProductPath
-                        output_dir: /home/rtc_user/scratch/output_dir
+                        output_dir: {{  output_dir  }}
 
                         # Validity start date for RTC-S1-STATIC products in the format YYYYMMDD,
                         # This field must be provided for RTC-S1 jobs when static layer
