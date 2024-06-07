@@ -4,7 +4,8 @@ from typing import Iterable, Optional
 
 from jinja2 import Template
 
-from hyp3_opera_rtc.prep_slc import prep_bursts, prep_slc
+from hyp3_opera_rtc.prep_slc import prep_slc
+from hyp3_opera_rtc.prep_burst import prep_burst
 
 
 def render_runconfig(
@@ -67,8 +68,8 @@ def opera_rtc(
     output_dir = work_dir / 'output'
     [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
 
-    if all([x.ends_with('BURST') for x in granules]):
-        granule_path, orbit_path, db_path, dem_path = prep_bursts(granules, use_resorb=use_resorb, work_dir=input_dir)
+    if all([x.endswith('BURST') for x in granules]):
+        granule_path, orbit_path, db_path, dem_path = prep_burst(granules, use_resorb=use_resorb, work_dir=input_dir)
     else:
         if len(granules) > 1:
             raise ValueError('Only one granule is supported for SLC processing')
