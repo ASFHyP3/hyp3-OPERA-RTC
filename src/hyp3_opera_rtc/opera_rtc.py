@@ -83,8 +83,8 @@ def opera_rtc(
     config_args = {
         'config_path': config_path,
         'granule_name': granule_path.name,
-        # 'orbit_name': orbit_path.name,
-        'orbit_name': 'S1A_OPER_AUX_RESORB_OPOD_20240605T154014_V20240605T115029_20240605T150759.EOF',
+        'orbit_name': orbit_path.name,
+        # 'orbit_name': 'S1A_OPER_AUX_RESORB_OPOD_20240605T154014_V20240605T115029_20240605T150759.EOF',
         'db_name': db_path.name,
         'dem_name': dem_path.name,
         'bursts': burst_subset,
@@ -117,7 +117,7 @@ def opera_rtc(
         create_logger(log_path, full_log_formatting=False)
         cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
         load_parameters(cfg)
-        run_parallel(cfg, logfile_path=log_path, full_log_formatting=False)
+        run_parallel(cfg, logfile_path=log_path, flag_logger_full_format=False)
     except ImportError:
         pass
 

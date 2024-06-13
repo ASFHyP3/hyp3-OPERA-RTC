@@ -146,6 +146,7 @@ def get_orbit_url(granule: str, orbit_type: str = 'AUX_POEORB', provider: str = 
     raise OrbitDownloadError(f'Unknown orbit file provider {provider}')
 
 
+# TODO: not downloading correct RESORB files
 def download_sentinel_orbit_file(
     granule: str,
     directory: str = '',
