@@ -14,6 +14,7 @@ dependencies:
   - lxml
   - jinja2
   - burst2safe
+  - s1reader
   # For packaging, and testing
   - setuptools
   - setuptools_scm

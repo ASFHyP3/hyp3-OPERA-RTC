@@ -83,7 +83,8 @@ def opera_rtc(
     config_args = {
         'config_path': config_path,
         'granule_name': granule_path.name,
-        'orbit_name': orbit_path.name,
+        # 'orbit_name': orbit_path.name,
+        'orbit_name': 'S1A_OPER_AUX_RESORB_OPOD_20240605T154014_V20240605T115029_20240605T150759.EOF',
         'db_name': db_path.name,
         'dem_name': dem_path.name,
         'bursts': burst_subset,
@@ -102,13 +103,15 @@ def opera_rtc(
     rtc_present = False
     try:
         import logging
-        from rtc.runconfig import RunConfig, load_parameters
+
         from rtc.core import create_logger
-        from rtc.rtc_s1_single_job import get_rtc_s1_parser
         from rtc.rtc_s1 import run_parallel
+        from rtc.rtc_s1_single_job import get_rtc_s1_parser
+        from rtc.runconfig import RunConfig, load_parameters
 
         rtc_present = True
         config_args['config_type'] = 'sas'
+        config_args['container_base_path'] = input_dir.parent
         render_runconfig(**config_args)
         log_path = str((output_dir / 'rtc.log').resolve())
         create_logger(log_path, full_log_formatting=False)
@@ -116,7 +119,7 @@ def opera_rtc(
         load_parameters(cfg)
         run_parallel(cfg, logfile_path=log_path, full_log_formatting=False)
     except ImportError:
-        continue
+        pass
 
     if not pge_present and not rtc_present:
         raise ImportError('Neither the OPERA RTC PGE or SAS modules could be imported.')
