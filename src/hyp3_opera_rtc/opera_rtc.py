@@ -4,8 +4,8 @@ from typing import Iterable, Optional
 
 from jinja2 import Template
 
-from hyp3_opera_rtc.prep_slc import prep_slc
 from hyp3_opera_rtc.prep_burst import prep_burst
+from hyp3_opera_rtc.prep_slc import prep_slc
 
 
 def render_runconfig(
@@ -14,6 +14,7 @@ def render_runconfig(
     orbit_name: str,
     db_name: str,
     dem_name: str,
+    config_type: str = 'pge',
     bursts: Iterable[str] = None,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ):
@@ -37,8 +38,11 @@ def render_runconfig(
     if bursts is not None:
         runconfig_dict['bursts'] = [b.lower() for b in bursts]
 
+    if config_type not in ['sas', 'pge']:
+        raise ValueError('Config type must be sas or pge.')
+
     template_dir = Path(__file__).parent / 'templates'
-    with open(template_dir / 'runconfig.yml', 'r') as file:
+    with open(template_dir / f'{config_type}.yml', 'r') as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
@@ -48,7 +52,7 @@ def render_runconfig(
 
 def opera_rtc(
     granules: Iterable[str],
-    bursts: Optional[str] = None,
+    burst_subset: Optional[str] = None,
     use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
@@ -76,14 +80,46 @@ def opera_rtc(
         granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], use_resorb=use_resorb, work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
-    render_runconfig(config_path, granule_path.name, orbit_path.name, db_path.name, dem_path.name, bursts)
-
+    config_args = {
+        'config_path': config_path,
+        'granule_name': granule_path.name,
+        'orbit_name': orbit_path.name,
+        'db_name': db_path.name,
+        'dem_name': dem_path.name,
+        'bursts': burst_subset,
+    }
+    pge_present = False
     try:
         from opera.scripts.pge_main import pge_start
-    except ImportError:
-        raise ImportError('OPERA PGE script is not present. Are you running from within the OPERA PGE container?')
 
-    pge_start(str(config_path.resolve()))
+        pge_present = True
+        config_args['config_type'] = 'pge'
+        render_runconfig(**config_args)
+        pge_start(str(config_path.resolve()))
+    except ImportError:
+        print('OPERA PGE script is not present, using OPERA SAS library.')
+
+    rtc_present = False
+    try:
+        import logging
+        from rtc.runconfig import RunConfig, load_parameters
+        from rtc.core import create_logger
+        from rtc.rtc_s1_single_job import get_rtc_s1_parser
+        from rtc.rtc_s1 import run_parallel
+
+        rtc_present = True
+        config_args['config_type'] = 'sas'
+        render_runconfig(**config_args)
+        log_path = str((output_dir / 'rtc.log').resolve())
+        create_logger(log_path, full_log_formatting=False)
+        cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
+        load_parameters(cfg)
+        run_parallel(cfg, logfile_path=log_path, full_log_formatting=False)
+    except ImportError:
+        continue
+
+    if not pge_present and not rtc_present:
+        raise ImportError('Neither the OPERA RTC PGE or SAS modules could be imported.')
 
 
 def main():
@@ -94,7 +130,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')
-    parser.add_argument('--bursts', nargs='+', type=str, help='JPL burst id to process')
+    parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
     parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
