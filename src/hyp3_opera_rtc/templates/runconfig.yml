@@ -237,10 +237,10 @@ RunConfig:
 
                             # Fields to populate the products' metadata required by
                             # CEOS Analysis Ready Data specifications
-                            estimated_geometric_accuracy_bias_x: 0.0
-                            estimated_geometric_accuracy_bias_y: 0.0
-                            estimated_geometric_accuracy_stddev_x: 0.0
-                            estimated_geometric_accuracy_stddev_y: 0.0
+                            estimated_geometric_accuracy_bias_x: -0.72
+                            estimated_geometric_accuracy_bias_y: -0.67
+                            estimated_geometric_accuracy_stddev_x: 0.7
+                            estimated_geometric_accuracy_stddev_y: 0.62
 
                         mosaicking:
                             # Mosaic mode - Choices: "average", "first", "bursts_center" (default)

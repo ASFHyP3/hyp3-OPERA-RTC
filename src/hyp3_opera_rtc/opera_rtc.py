@@ -34,7 +34,7 @@ def render_runconfig(
         'output_dir': str(output_dir),
     }
     if bursts is not None:
-        runconfig_dict['bursts'] = bursts
+        runconfig_dict['bursts'] = [b.lower() for b in bursts]
 
     template_dir = Path(__file__).parent / 'templates'
     with open(template_dir / 'runconfig.yml', 'r') as file:
