@@ -19,7 +19,6 @@ from urllib3.util.retry import Retry
 
 gdal.UseExceptions()
 log = logging.getLogger(__name__)
-ESA_HOST = 'dataspace.copernicus.eu'
 EARTHDATA_HOST = 'urs.earthdata.nasa.gov'
 DEM_URL = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1'
 
@@ -71,26 +70,6 @@ def find_creds_in_netrc(service) -> Tuple[str, str]:
             return username, password
 
     return None, None
-
-
-def get_esa_credentials() -> Tuple[str, str]:
-    """Get ESA credentials from the environment or netrc file.
-
-    Returns:
-        Tuple of the ESA username and password
-    """
-    username, password = find_creds_in_env('ESA_USERNAME', 'ESA_PASSWORD')
-    if username and password:
-        return username, password
-
-    username, password = find_creds_in_netrc(ESA_HOST)
-    if username and password:
-        return username, password
-
-    raise ValueError(
-        'Please provide Copernicus Data Space Ecosystem (CDSE) credentials via the '
-        'ESA_USERNAME and ESA_PASSWORD environment variables, or your netrc file.'
-    )
 
 
 def get_earthdata_credentials() -> Tuple[str, str]:
