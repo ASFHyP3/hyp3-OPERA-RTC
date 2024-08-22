@@ -31,6 +31,7 @@ def prep_slc(
     granule_bbox = utils.get_s1_granule_bbox(granule_path)
     dem_path = work_dir / 'dem.tif'
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
+    print('Downloads complete!')
 
     return granule_path, orbit_path, db_path, dem_path
 
