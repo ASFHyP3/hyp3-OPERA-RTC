@@ -9,14 +9,12 @@ from hyp3_opera_rtc import dem, utils
 
 def prep_slc(
     granule: str,
-    # use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
     """Prepare data for SLC-based processing.
 
     Args:
         granules: List of Sentinel-1 level-0 granules to back-project
-        use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
     if work_dir is None:
@@ -26,9 +24,7 @@ def prep_slc(
     granule_path = work_dir / f'{granule}.zip'
     utils.download_s1_granule(granule, work_dir)
 
-    # orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
-    # orbit_path = orbit.download_sentinel_orbit_file(granule, work_dir, orbit_types=[orbit_type])
-    orbit_path = s1_orbits.fetch_for_scene(granule)
+    orbit_path = s1_orbits.fetch_for_scene(granule, dir=work_dir)
 
     db_path = utils.download_burst_db(work_dir)
 
@@ -47,7 +43,6 @@ def main():
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granule', help='S1 granule to load data for.')
-    # parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB orbits')
     parser.add_argument('--work-dir', default=None, help='Working directory for processing')
 
     args = parser.parse_args()

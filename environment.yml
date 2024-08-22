@@ -9,7 +9,8 @@ dependencies:
   - gdal
   - numpy
   - shapely
-  - s1-orbits
+  - s1_orbits
+  - s1reader
   - requests
   - urllib3
   - lxml
