@@ -13,7 +13,7 @@ LABEL org.opencontainers.image.documentation="https://hyp3-docs.asf.alaska.edu"
 
 RUN conda install -c conda-forge -y git
 COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
-RUN python -m pip install --no-cache-dir -r /home/rtc_user/hyp3-opera-rtc/requirements_asf.txt
+RUN python -m pip install --no-cache-dir -r /home/rtc_user/hyp3-opera-rtc/requirements-hyp3.txt
 RUN python -m pip install --no-cache-dir /home/rtc_user/hyp3-opera-rtc/
 
 ENTRYPOINT ["/home/rtc_user/hyp3-opera-rtc/src/hyp3_opera_rtc/etc/entrypoint.sh"]

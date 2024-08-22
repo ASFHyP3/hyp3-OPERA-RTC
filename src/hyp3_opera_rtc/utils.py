@@ -9,6 +9,7 @@ from typing import Optional, Tuple, Union
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
+import asf_search
 import lxml.etree as ET
 import requests
 from osgeo import gdal
@@ -107,22 +108,22 @@ def _get_download_path(url: str, content_disposition: str = None, directory: Uni
 def download_file(
     url: str,
     directory: Union[Path, str] = '.',
-    chunk_size=2**20,
-    auth: Optional[Tuple[str, str]] = None,
-    token: Optional[str] = None,
+    chunk_size=10 * (2**20),
     retries=2,
     backoff_factor=1,
-) -> str:
+    auth: Optional[Tuple[str, str]] = None,
+    token: Optional[str] = None,
+) -> Path:
     """Download a file
 
     Args:
         url: URL of the file to download
         directory: Directory location to place files into
         chunk_size: Size to chunk the download into
-        auth: Username and password for HTTP Basic Auth
-        token: Token for HTTP Bearer authentication
         retries: Number of retries to attempt
         backoff_factor: Factor for calculating time between retries
+        auth: Username and password for HTTP Basic Auth
+        token: Token for HTTP Bearer authentication
 
     Returns:
         download_path: The path to the downloaded file
@@ -151,7 +152,7 @@ def download_file(
                     f.write(chunk)
     session.close()
 
-    return Path(download_path)
+    return download_path
 
 
 def download_burst_db(save_dir: Path) -> Path:
@@ -179,6 +180,24 @@ def download_s1_granule(granule, save_dir: Path) -> Path:
     creds = get_earthdata_credentials()
     download_file(url, save_dir, auth=creds, chunk_size=10 * (2**20))
     return save_dir / f'{granule}.zip'
+
+
+def download_s1_granule_asf(granule: str, save_dir=Path) -> Path:
+    result = asf_search.granule_search(f'{granule}-SLC')[0]
+    filename = result.properties['fileName']
+    url = result.properties['url']
+    out_path = Path(save_dir, filename)
+    username, password = get_earthdata_credentials()
+    session = asf_search.ASFSession().auth_with_creds(username, password)
+
+    max_retries = 3
+    n_retries = 0
+    while n_retries < max_retries and not out_path.exists():
+        asf_search.download_url(url, save_dir, filename, session)
+        n_retries += 1
+
+    if not out_path.exists():
+        raise ValueError(f'Failed to download {filename} after {max_retries} attempts.')
 
 
 def get_s1_granule_bbox(granule_path: Path):
