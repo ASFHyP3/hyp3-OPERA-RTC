@@ -51,11 +51,15 @@ def download_burst_db(save_dir: Path) -> Path:
 
 
 def download_s1_granule(granule, save_dir: Path) -> Path:
+    out_path = save_dir / f'{granule}.zip'
+    if out_path.exists():
+        return out_path
+
     mission = granule[0] + granule[2]
     product_type = granule[7:10]
     url = f'https://sentinel1.asf.alaska.edu/{product_type}/{mission}/{granule}.zip'
     earthaccess.download(url, str(save_dir))
-    return save_dir / f'{granule}.zip'
+    return out_path
 
 
 def get_s1_granule_bbox(granule_path: Path):

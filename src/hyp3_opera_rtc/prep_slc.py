@@ -2,9 +2,8 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-import s1_orbits
-
 from hyp3_opera_rtc import dem, utils
+from hyp3_opera_rtc.orbit import get_orbit
 
 
 def prep_slc(
@@ -21,12 +20,12 @@ def prep_slc(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    granule_path = work_dir / f'{granule}.zip'
-    utils.download_s1_granule(granule, work_dir)
-
-    orbit_path = s1_orbits.fetch_for_scene(granule, dir=work_dir)
+    orbit_path = get_orbit(granule, save_dir=work_dir)
 
     db_path = utils.download_burst_db(work_dir)
+
+    granule_path = work_dir / f'{granule}.zip'
+    utils.download_s1_granule(granule, work_dir)
 
     granule_bbox = utils.get_s1_granule_bbox(granule_path)
     dem_path = work_dir / 'dem.tif'
