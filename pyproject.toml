@@ -22,7 +22,7 @@ dependencies = [
     "gdal",
     "numpy",
     "shapely",
-    "s1-orbits",
+    "earthaccess",
     "requests",
     "urllib3",
     "lxml",
