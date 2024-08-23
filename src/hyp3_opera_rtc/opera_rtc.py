@@ -80,7 +80,7 @@ def main():
 
     Example command:
     python -m hyp3_opera_rtc ++process opera_rtc \
-        S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F --bursts 069_147178_IW3
+        S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --bursts t115_245714_iw1
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granule', type=str, help='S1 granule to create an RTC for.')
