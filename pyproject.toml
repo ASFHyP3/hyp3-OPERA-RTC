@@ -22,6 +22,7 @@ dependencies = [
     "gdal",
     "numpy",
     "shapely",
+    "boto3",
     "earthaccess",
     "requests",
     "urllib3",

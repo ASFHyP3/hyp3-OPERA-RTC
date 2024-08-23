@@ -70,6 +70,9 @@ def get_latlon_pairs(polygon: Polygon) -> list:
 
 
 def download_opera_dem_for_footprint(output_path, footprint):
+    if output_path.exists():
+        return output_path
+
     output_dir = output_path.parent
     footprints = check_antimeridean(footprint)
     latlon_pairs = []

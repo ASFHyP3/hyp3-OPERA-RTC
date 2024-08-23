@@ -45,6 +45,10 @@ def download_burst_db(save_dir: Path) -> Path:
         Path to the downloaded database
     """
     db_path = save_dir / 'opera-burst-bbox-only.sqlite3'
+
+    if db_path.exists():
+        return db_path
+
     url = 'https://ffwilliams2-shenanigans.s3.us-west-2.amazonaws.com/opera/opera-burst-bbox-only.sqlite3'
     download_file(url, db_path)
     return db_path

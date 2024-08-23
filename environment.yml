@@ -9,6 +9,7 @@ dependencies:
   - gdal
   - numpy
   - shapely
+  - boto3
   - s1reader
   - requests
   - urllib3

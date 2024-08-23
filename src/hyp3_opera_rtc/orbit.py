@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import Union
 
 import boto3
+from botocore import UNSIGNED
+from botocore.client import Config
 
 from hyp3_opera_rtc.utils import download_file
 
 
-s3 = boto3.client('s3')
+s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
 # orbits bucket
 BUCKET = 's1-orbits'
@@ -69,5 +71,9 @@ def get_url(granule: str, bucket: str) -> Union[str, None]:
 def get_orbit(scene: str, save_dir: Path):
     url = get_url(scene, BUCKET)
     orbit_path = save_dir / url.split('/')[-1]
+
+    if orbit_path.exists():
+        return orbit_path
+
     download_file(url, orbit_path)
     return orbit_path
