@@ -9,6 +9,9 @@ dependencies:
   - gdal
   - numpy
   - shapely
+  - boto3
+  - earthaccess
+  - s1reader
   - requests
   - urllib3
   - lxml

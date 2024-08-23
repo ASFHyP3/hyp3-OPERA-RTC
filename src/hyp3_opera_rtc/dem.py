@@ -1,13 +1,11 @@
-from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from pathlib import Path
 
+import earthaccess
 import numpy as np
 import shapely
 from osgeo import gdal
 from shapely.geometry import LinearRing, Polygon
-
-from hyp3_opera_rtc import utils
 
 
 gdal.UseExceptions()
@@ -72,16 +70,17 @@ def get_latlon_pairs(polygon: Polygon) -> list:
 
 
 def download_opera_dem_for_footprint(output_path, footprint):
+    if output_path.exists():
+        return output_path
+
     output_dir = output_path.parent
     footprints = check_antimeridean(footprint)
     latlon_pairs = []
     for footprint in footprints:
         latlon_pairs += get_latlon_pairs(footprint)
     urls = [get_dem_granule_url(lat, lon) for lat, lon in latlon_pairs]
-    creds = utils.get_earthdata_credentials()
-    with ThreadPoolExecutor() as executor:
-        n = len(urls)
-        executor.map(utils.download_file, urls, [output_dir] * n, [4 * (2**20)] * n, [creds] * n)
+
+    earthaccess.download(urls, str(output_dir), threads=8)
 
     vrt_filepath = output_dir / 'dem.vrt'
     input_files = [str(output_dir / Path(url).name) for url in urls]
