@@ -13,7 +13,8 @@ If you do not already have an Earthdata account, you can sign up [here](https://
 Your credentials can be passed to the workflows via environmental variables that are passed to the docker container (`EARTHDATA_USERNAME`, and `EARTHDATA_PASSWORD`)
 
 ## Usage
-This plugin is designed to run within the HyP3 processing system, and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container (see architecture section below). Currently, this container is not publicly available, but it likely will be in the near future.
+> [!WARNING]
+> This plugin is designed to run within the HyP3 processing system, and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container (see architecture section below). Currently this container is not publicly available, but the OPERA team is working to make it available in the near future.
 
 For this reason, the plugin is only runnable via the docker container.
 
@@ -21,7 +22,7 @@ To do this, first build the container locally (assuming you have access to the o
 ```bash
 git clone https://github.com/ASFHyP3/hyp3-OPERA-RTC.git
 cd hyp3-OPERA-RTC
-docker build -t hyp3-opera-rtc:latest .
+docker build --platform linux/amd64 -t hyp3-opera-rtc:latest .
 ```
 Then run the container:
 ```bash
@@ -29,9 +30,9 @@ docker run -it --rm \
     -e EARTHDATA_USERNAME=[YOUR_USERNAME_HERE] \
     -e EARTHDATA_PASSWORD=[YOUR_PASSWORD_HERE] \
     hyp3-opera-rtc:latest ++process opera_rtc \
-    S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
+    S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --bursts t115_245714_iw1 
 ```
-Where you replace `S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F` with the name of the Sentinel-1 SLC scene to generate OPERA RTC granules for.
+Where you replace `S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31` with the name of the Sentinel-1 SLC scene to generate OPERA RTC granules for, and `t115_245714_iw1` with the JPL burst IDs you'd like to process.
 
 All options for the workflow can be explored by calling `docker run -it --rm hyp3-opera-rtc:latest ++process opera_rtc --help`.
 
