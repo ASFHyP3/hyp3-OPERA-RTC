@@ -60,7 +60,7 @@ def opera_rtc(
 
     Args:
         granules: List of Sentinel-1 level-1 granules to back-project
-        bursts: List of JPL burst ids to process
+        burst_subset: List of JPL burst ids to process
         use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
@@ -84,7 +84,6 @@ def opera_rtc(
         'config_path': config_path,
         'granule_name': granule_path.name,
         'orbit_name': orbit_path.name,
-        # 'orbit_name': 'S1A_OPER_AUX_RESORB_OPOD_20240605T154014_V20240605T115029_20240605T150759.EOF',
         'db_name': db_path.name,
         'dem_name': dem_path.name,
         'bursts': burst_subset,
@@ -102,11 +101,10 @@ def opera_rtc(
 
     rtc_present = False
     try:
-        import logging
-
+        # import logging
+        # from rtc.rtc_s1_single_job import get_rtc_s1_parser
         from rtc.core import create_logger
         from rtc.rtc_s1 import run_parallel
-        from rtc.rtc_s1_single_job import get_rtc_s1_parser
         from rtc.runconfig import RunConfig, load_parameters
 
         rtc_present = True
@@ -129,12 +127,12 @@ def main():
     """Create an OPERA RTC
 
     Example command:
-    python -m hyp3_opera_rtc ++process opera_rtc S1B_IW_SLC__1SDV_20180504T104507_20180504T104535_010770_013AEE_919F
+    python -m hyp3_opera_rtc ++process opera_rtc \
+        S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --bursts t115_245714_iw1
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')
     parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
-    parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
     args = parser.parse_args()

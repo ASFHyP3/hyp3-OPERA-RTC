@@ -3,12 +3,15 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python<3.10
+  - python=3.9
   - pip
   # For running
   - gdal
   - numpy
   - shapely
+  - boto3
+  - earthaccess
+  - s1reader
   - requests
   - urllib3
   - lxml
