@@ -53,7 +53,6 @@ def render_runconfig(
 def opera_rtc(
     granules: Iterable[str],
     burst_subset: Optional[str] = None,
-    use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
     """Prepare data for SLC-based processing.
@@ -61,7 +60,6 @@ def opera_rtc(
     Args:
         granules: List of Sentinel-1 level-1 granules to back-project
         burst_subset: List of JPL burst ids to process
-        use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
     if work_dir is None:
@@ -73,11 +71,11 @@ def opera_rtc(
     [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
 
     if all([x.endswith('BURST') for x in granules]):
-        granule_path, orbit_path, db_path, dem_path = prep_burst(granules, use_resorb=use_resorb, work_dir=input_dir)
+        granule_path, orbit_path, db_path, dem_path = prep_burst(granules, work_dir=input_dir)
     else:
         if len(granules) > 1:
             raise ValueError('Only one granule is supported for SLC processing')
-        granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], use_resorb=use_resorb, work_dir=input_dir)
+        granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
     config_args = {
@@ -128,7 +126,7 @@ def main():
 
     Example command:
     python -m hyp3_opera_rtc ++process opera_rtc \
-        S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --bursts t115_245714_iw1
+        S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --burst-subset t115_245714_iw1
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')

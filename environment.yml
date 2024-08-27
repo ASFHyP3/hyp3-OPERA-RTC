@@ -3,21 +3,24 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python=3.9
-  - pip
   # For running
-  - gdal
-  - numpy
+  - python>=3.9,<3.10
+  - pip
+  # OPERA RTC-sourced requirements
+  - gdal>=3.0
+  - numpy>=1.20
   - shapely
+  - s1reader>=0.2.4
+  - pybind11>=2.5
+  - pyre>=1.11.2
+  - scipy!=1.10.0
+  - isce3==0.15.0
+  # Workaround for the issue with `libabseil` (09/11/2023)
+  - libabseil=20230125.3
+  # Additional requirements
   - boto3
   - earthaccess
-  - s1reader
-  - requests
-  - urllib3
-  - lxml
-  - jinja2
   - burst2safe
-  - s1reader
   # For packaging, and testing
   - setuptools
   - setuptools_scm
@@ -25,3 +28,5 @@ dependencies:
   - pytest
   - pytest-console-scripts
   - pytest-cov
+  - pip:
+    - rtc@git+https://github.com/opera-adt/RTC.git@v1.0.2
