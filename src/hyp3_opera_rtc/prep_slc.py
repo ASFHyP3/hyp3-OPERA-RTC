@@ -20,12 +20,13 @@ def prep_slc(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    orbit_path = get_orbit(granule, save_dir=work_dir)
-
-    db_path = utils.download_burst_db(work_dir)
 
     granule_path = work_dir / f'{granule}.zip'
     utils.download_s1_granule(granule, work_dir)
+
+    orbit_path = get_orbit(granule, save_dir=work_dir)
+
+    db_path = utils.download_burst_db(work_dir)
 
     granule_bbox = utils.get_s1_granule_bbox(granule_path)
     dem_path = work_dir / 'dem.tif'

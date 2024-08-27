@@ -10,7 +10,6 @@ from hyp3_opera_rtc import dem, orbit, utils
 
 def prep_burst(
     granules: Iterable[str],
-    use_resorb: bool = True,
     work_dir: Optional[Path] = None,
 ) -> Path:
     """Prepare data for burst-based processing.
@@ -24,13 +23,13 @@ def prep_burst(
         work_dir = Path.cwd()
 
     print('Downloading data...')
-    granule_path = burst2safe(granules=granules, work_dir=work_dir)
-    make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
-    granule_path = granule_path.with_suffix('.zip')
-    granule = granule_path.with_suffix('').name
 
-    orbit_type = 'AUX_RESORB' if use_resorb else 'AUX_POEORB'
-    orbit_path = orbit.download_sentinel_orbit_file(granule, work_dir, orbit_types=[orbit_type])
+    granule_path = burst2safe(granules=granules, all_anns=True, work_dir=work_dir)
+    make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
+    granule = granule_path.with_suffix('').name
+    granule_path = granule_path.with_suffix('.zip')
+
+    orbit_path = orbit.get_orbit(granule, save_dir=work_dir)
 
     db_path = utils.download_burst_db(work_dir)
 
@@ -48,8 +47,7 @@ def main():
     python -m hyp3_opera_rtc ++process prep_burst S1_136231_IW2_20200604T022312_VV_7C85-BURST S1_136231_IW2_20200604T022312_VH_7C85-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granules', nargs='+', help='S1 granule to load data for.')
-    parser.add_argument('--use-resorb', action='store_true', help='Use RESORB orbits instead of POEORB orbits')
+    parser.add_argument('granules', nargs='+', help='S1 burst granules to load data for.')
     parser.add_argument('--work-dir', default=None, help='Working directory for processing')
 
     args = parser.parse_args()

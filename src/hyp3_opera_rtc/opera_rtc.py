@@ -99,8 +99,6 @@ def opera_rtc(
 
     rtc_present = False
     try:
-        # import logging
-        # from rtc.rtc_s1_single_job import get_rtc_s1_parser
         from rtc.core import create_logger
         from rtc.rtc_s1 import run_parallel
         from rtc.runconfig import RunConfig, load_parameters
@@ -124,9 +122,12 @@ def opera_rtc(
 def main():
     """Create an OPERA RTC
 
-    Example command:
+    Example commands:
     python -m hyp3_opera_rtc ++process opera_rtc \
         S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --burst-subset t115_245714_iw1
+
+    python -m hyp3_opera_rtc ++process opera_rtc \
+        S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')
