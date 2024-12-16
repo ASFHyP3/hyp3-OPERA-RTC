@@ -37,6 +37,7 @@ develop = [
     "pytest",
     "pytest-cov",
     "pytest-console-scripts",
+    "ruff",
 ]
 
 [project.urls]
