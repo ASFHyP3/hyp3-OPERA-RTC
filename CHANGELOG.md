@@ -8,6 +8,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.1]
 
+### Changed
+- The [`static-analysis`](.github/workflows/static-analysis.yml) Github Actions workflow now uses `ruff` rather than `flake8` for linting.
+
 ## [0.1.0]
 
 ### Added
