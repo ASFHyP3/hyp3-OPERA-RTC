@@ -1,6 +1,5 @@
-"""
-OPERA-RTC processing for HyP3
-"""
+"""OPERA-RTC processing for HyP3"""
+
 import argparse
 import sys
 from importlib.metadata import entry_points

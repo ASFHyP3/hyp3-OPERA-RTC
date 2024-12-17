@@ -1,6 +1,7 @@
 import argparse
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 from jinja2 import Template
 
@@ -37,7 +38,7 @@ def render_runconfig(
         runconfig_dict['bursts'] = [b.lower() for b in bursts]
 
     template_dir = Path(__file__).parent / 'templates'
-    with open(template_dir / 'runconfig.yml', 'r') as file:
+    with open(template_dir / 'runconfig.yml') as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
