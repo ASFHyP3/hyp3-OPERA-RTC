@@ -1,6 +1,4 @@
-"""
-OPERA-RTC processing for HyP3
-"""
+"""OPERA-RTC processing for HyP3"""
 
 import argparse
 import sys
