@@ -49,7 +49,8 @@ def main():
     """Prep SLC entrypoint.
 
     Example command:
-    python -m hyp3_opera_rtc ++process prep_burst S1_136231_IW2_20200604T022312_VV_7C85-BURST S1_136231_IW2_20200604T022312_VH_7C85-BURST
+    python -m hyp3_opera_rtc ++process prep_burst \
+        S1_136231_IW2_20200604T022312_VV_7C85-BURST S1_136231_IW2_20200604T022312_VH_7C85-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='S1 burst granules to load data for.')
