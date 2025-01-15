@@ -22,17 +22,19 @@ def prep_slc(
     print('Downloading data...')
 
     granule_path = work_dir / f'{granule}.zip'
-    utils.download_s1_granule(granule, work_dir)
+    if not granule_path.exists():
+        utils.download_s1_granule(granule, work_dir)
 
-    orbit_path = get_orbit(granule, save_dir=work_dir)
+    if len(list(work_dir.glob('*.EOF'))) == 0:
+        orbit_path = get_orbit(granule, save_dir=work_dir)
+    else:
+        orbit_path = work_dir / list(work_dir.glob('*.EOF'))[0].name
 
     db_path = utils.download_burst_db(work_dir)
 
-    granule_bbox = utils.get_s1_granule_bbox(granule_path)
     dem_path = work_dir / 'dem.tif'
-    dem.download_opera_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
-    print('Downloads complete!')
-
+    granule_bbox = utils.get_s1_granule_bbox(granule_path)
+    dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
     return granule_path, orbit_path, db_path, dem_path
 
 

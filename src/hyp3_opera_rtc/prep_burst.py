@@ -24,19 +24,24 @@ def prep_burst(
 
     print('Downloading data...')
 
-    granule_path = burst2safe(granules=granules, all_anns=True, work_dir=work_dir)
-    make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
-    granule = granule_path.with_suffix('').name
-    granule_path = granule_path.with_suffix('.zip')
+    if len(list(work_dir.glob('S1*.zip'))) == 0:
+        granule_path = burst2safe(granules=granules, all_anns=True, work_dir=work_dir)
+        make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
+        granule = granule_path.with_suffix('').name
+        granule_path = granule_path.with_suffix('.zip')
+    else:
+        granule_path = work_dir / list(work_dir.glob('S1*.zip'))[0].name
 
-    orbit_path = orbit.get_orbit(granule, save_dir=work_dir)
+    if len(list(work_dir.glob('*.EOF'))) == 0:
+        orbit_path = orbit.get_orbit(granule, save_dir=work_dir)
+    else:
+        orbit_path = work_dir / list(work_dir.glob('*.EOF'))[0].name
 
     db_path = utils.download_burst_db(work_dir)
 
-    granule_bbox = utils.get_s1_granule_bbox(granule_path)
     dem_path = work_dir / 'dem.tif'
-    dem.download_opera_dem_for_footprint(dem_path, granule_bbox.buffer(0.15))
-
+    granule_bbox = utils.get_s1_granule_bbox(granule_path)
+    dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
     return granule_path, orbit_path, db_path, dem_path
 
 

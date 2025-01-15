@@ -16,6 +16,7 @@ def render_runconfig(
     dem_name: str,
     config_type: str = 'pge',
     bursts: Iterable[str] = None,
+    resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ):
     input_dir = container_base_path / 'input'
@@ -34,6 +35,7 @@ def render_runconfig(
         'dem_path': str(dem_path),
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
+        'resolution': int(resolution),
     }
     if bursts is not None:
         runconfig_dict['bursts'] = [b.lower() for b in bursts]
@@ -52,6 +54,7 @@ def render_runconfig(
 
 def opera_rtc(
     granules: Iterable[str],
+    resolution: int = 30,
     burst_subset: Optional[str] = None,
     work_dir: Optional[Path] = None,
 ) -> Path:
@@ -59,6 +62,7 @@ def opera_rtc(
 
     Args:
         granules: List of Sentinel-1 level-1 granules to back-project
+        resolution: Resolution of the output RTC (m)
         burst_subset: List of JPL burst ids to process
         work_dir: Working directory for processing
     """
@@ -85,6 +89,7 @@ def opera_rtc(
         'db_name': db_path.name,
         'dem_name': dem_path.name,
         'bursts': burst_subset,
+        'resolution': resolution,
     }
     pge_present = False
     try:
@@ -131,6 +136,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')
+    parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
     parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
