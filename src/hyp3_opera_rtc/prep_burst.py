@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 from shutil import make_archive
-from typing import Iterable, Optional
+from typing import Optional
 
 from burst2safe.burst2safe import burst2safe
 
@@ -9,7 +9,7 @@ from hyp3_opera_rtc import dem, orbit, utils
 
 
 def prep_burst(
-    granules: Iterable[str],
+    granules: list[str],
     work_dir: Optional[Path] = None,
 ) -> Path:
     """Prepare data for burst-based processing.
