@@ -1,6 +1,7 @@
 import argparse
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 from jinja2 import Template
 
@@ -44,7 +45,7 @@ def render_runconfig(
         raise ValueError('Config type must be sas or pge.')
 
     template_dir = Path(__file__).parent / 'templates'
-    with open(template_dir / f'{config_type}.yml', 'r') as file:
+    with open(template_dir / f'{config_type}.yml') as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
