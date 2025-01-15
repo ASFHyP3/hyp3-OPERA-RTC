@@ -64,8 +64,8 @@ def get_dem_granule_url(lat: int, lon: int) -> str:
 
 def get_latlon_pairs(polygon: Polygon) -> list:
     minx, miny, maxx, maxy = polygon.bounds
-    lats = np.arange(np.floor(miny), np.ceil(maxy) + 1).astype(int)
-    lons = np.arange(np.floor(minx), np.ceil(maxx) + 1).astype(int)
+    lats = np.arange(np.floor(miny), np.floor(maxy) + 1).astype(int)
+    lons = np.arange(np.floor(minx), np.floor(maxx) + 1).astype(int)
     return list(product(lats, lons))
 
 

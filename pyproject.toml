@@ -29,6 +29,7 @@ dependencies = [
     "urllib3",
     "lxml",
     "jinja2",
+    "burst2safe"
 ]
 dynamic = ["version", "readme"]
 
@@ -45,6 +46,7 @@ Homepage = "https://github.com/ASFHyP3/hyp3-OPERA-RTC"
 Documentation = "https://hyp3-docs.asf.alaska.edu"
 
 [project.entry-points.hyp3]
+prep_burst = "hyp3_opera_rtc.prep_burst:main"
 prep_slc = "hyp3_opera_rtc.prep_slc:main"
 opera_rtc = "hyp3_opera_rtc.opera_rtc:main"
 

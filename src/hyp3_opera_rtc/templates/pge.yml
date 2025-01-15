@@ -228,6 +228,10 @@ RunConfig:
                             memory_mode: auto
 
                             bursts_geogrid:
+                                x_posting: {{  resolution  }} 
+                                y_posting: {{  resolution  }} 
+                                x_snap: {{  resolution  }} 
+                                y_snap: {{  resolution  }} 
                                 top_left:
                                     x:
                                     y:

@@ -66,7 +66,7 @@ def download_s1_granule(granule, save_dir: Path) -> Path:
     return out_path
 
 
-def get_s1_granule_bbox(granule_path: Path):
+def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> box:
     if granule_path.suffix == '.zip':
         with ZipFile(granule_path, 'r') as z:
             manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
@@ -80,5 +80,5 @@ def get_s1_granule_bbox(granule_path: Path):
     frame_string = frame_element.find('.//{http://www.opengis.net/gml}coordinates').text
     coord_strings = [pair.split(',') for pair in frame_string.split(' ')]
     coords = [(float(lon), float(lat)) for lat, lon in coord_strings]
-    footprint = Polygon(coords)
+    footprint = Polygon(coords).buffer(buffer)
     return box(*footprint.bounds)
