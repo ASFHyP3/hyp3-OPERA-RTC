@@ -19,6 +19,7 @@ dependencies:
   - libabseil=20230125.3
   # Additional requirements
   - boto3
+  - jinja2
   - earthaccess
   - burst2safe
   # For packaging, and testing
