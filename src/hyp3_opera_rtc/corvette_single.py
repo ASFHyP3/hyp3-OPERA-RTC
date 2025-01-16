@@ -30,7 +30,6 @@ from rtc.h5_prep import (
     get_product_version,
     save_hdf5_file,
 )
-from rtc.mosaic_geobursts import mosaic_multiple_output_files, mosaic_single_output_file
 from rtc.runconfig import STATIC_LAYERS_PRODUCT_TYPE, RunConfig
 from rtc.version import VERSION as SOFTWARE_VERSION
 from s1reader.s1_burst_slc import Sentinel1BurstSlc
@@ -43,11 +42,6 @@ STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR = 3
 
 STATIC_LAYERS_AZ_MARGIN = 1.2
 STATIC_LAYERS_RG_MARGIN = 0.2
-
-BROWSE_IMAGE_MIN_PERCENTILE = 3
-BROWSE_IMAGE_MAX_PERCENTILE = 97
-
-FLAG_BROWSE_DUAL_POL_REPEAT_COPOL = True
 
 
 # from rtc_s1.py
@@ -476,13 +470,6 @@ def _create_raster_obj(
     output_obj_list.append(raster_obj)
     radar_grid_file_dict[layer_name] = output_file
     return raster_obj
-
-
-def add_output_to_output_metadata_dict(flag, key, output_dir, output_metadata_dict, product_id, extension):
-    if not flag:
-        return
-    output_image_list = []
-    output_metadata_dict[key] = [os.path.join(output_dir, f'{product_id}_{key}.{extension}'), output_image_list]
 
 
 def apply_slc_corrections(
@@ -1042,30 +1029,15 @@ def run_single_job(cfg: RunConfig):
     burst_id = next(iter(cfg.bursts))
     burst_pol_dict = cfg.bursts[burst_id]
     pol_list = list(burst_pol_dict.keys())
-    burst_ref = burst_pol_dict[pol_list[0]]
     pixel_spacing_avg = int((cfg.geogrid.spacing_x + abs(cfg.geogrid.spacing_y)) / 2)
-    mosaic_product_id = populate_product_id(
-        runconfig_product_id,
-        burst_ref,
-        processing_datetime,
-        product_version,
-        pixel_spacing_avg,
-        product_type,
-        rtc_s1_static_validity_start_date,
-        is_mosaic=True,
-    )
 
     scratch_path = os.path.join(cfg.groups.product_group.scratch_path, f'temp_{time_stamp}')
     output_dir = cfg.groups.product_group.output_dir
 
     # populate processing parameters
     save_bursts = cfg.groups.product_group.save_bursts
-    save_mosaics = cfg.groups.product_group.save_mosaics
+    # save_mosaics = cfg.groups.product_group.save_mosaics
     flag_save_browse = cfg.groups.product_group.save_browse
-
-    if not save_bursts and not save_mosaics:
-        err_msg = 'ERROR either `save_bursts` or `save_mosaics` needs to be' ' set'
-        raise ValueError(err_msg)
 
     output_imagery_format = cfg.groups.product_group.output_imagery_format
     output_imagery_compression = cfg.groups.product_group.output_imagery_compression
@@ -1116,10 +1088,6 @@ def run_single_job(cfg: RunConfig):
 
     save_dem = geocode_namespace.save_dem
     save_mask = geocode_namespace.save_mask
-
-    # unpack mosaicking run parameters
-    mosaicking_namespace = cfg.groups.processing.mosaicking
-    mosaic_mode = mosaicking_namespace.mosaic_mode
 
     flag_call_radar_grid = (
         save_incidence_angle
@@ -1180,57 +1148,8 @@ def run_single_job(cfg: RunConfig):
     exponent = 1 if (flag_apply_thermal_noise_correction or flag_apply_abs_rad_correction) else 2
 
     # output mosaics variables
-    geo_filename = f'{output_dir}/' f'{mosaic_product_id}.{imagery_extension}'
     output_imagery_list = []
     output_file_list = []
-    mosaic_output_file_list = []
-    output_metadata_dict = {}
-
-    # output dir (imagery mosaics)
-    if save_imagery_as_hdf5:
-        output_dir_mosaic_raster = scratch_path
-    else:
-        output_dir_mosaic_raster = output_dir
-
-    # output dir (secondary layers mosaics)
-    if save_secondary_layers_as_hdf5:
-        output_dir_sec_mosaic_raster = scratch_path
-    else:
-        output_dir_sec_mosaic_raster = output_dir
-
-    add_output_to_output_metadata_dict(
-        save_mask,
-        LAYER_NAME_LAYOVER_SHADOW_MASK,
-        output_dir_sec_mosaic_raster,
-        output_metadata_dict,
-        mosaic_product_id,
-        imagery_extension,
-    )
-    add_output_to_output_metadata_dict(
-        save_nlooks,
-        LAYER_NAME_NUMBER_OF_LOOKS,
-        output_dir_sec_mosaic_raster,
-        output_metadata_dict,
-        mosaic_product_id,
-        imagery_extension,
-    )
-    add_output_to_output_metadata_dict(
-        save_rtc_anf,
-        layer_name_rtc_anf,
-        output_dir_sec_mosaic_raster,
-        output_metadata_dict,
-        mosaic_product_id,
-        imagery_extension,
-    )
-    add_output_to_output_metadata_dict(
-        save_rtc_anf_gamma0_to_sigma0,
-        LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0,
-        output_dir_sec_mosaic_raster,
-        output_metadata_dict,
-        mosaic_product_id,
-        imagery_extension,
-    )
-
     temp_files_list = []
 
     os.makedirs(output_dir, exist_ok=True)
@@ -1239,9 +1158,6 @@ def run_single_job(cfg: RunConfig):
 
     n_bursts = len(cfg.bursts.items())
     logger.info(f'Number of bursts to process: {n_bursts}')
-
-    hdf5_mosaic_obj = None
-    output_hdf5_file = os.path.join(output_dir, f'{mosaic_product_id}.{hdf5_file_extension}')
 
     lookside = None
     wavelength = None
@@ -1519,8 +1435,6 @@ def run_single_job(cfg: RunConfig):
             else:
                 burst_output_file_list.append(layover_shadow_mask_file)
                 logger.info(f'file saved: {layover_shadow_mask_file}')
-                if save_mask:
-                    output_metadata_dict[LAYER_NAME_LAYOVER_SHADOW_MASK][1].append(layover_shadow_mask_file)
 
             if not save_mask:
                 layover_shadow_mask_file = None
@@ -1674,7 +1588,6 @@ def run_single_job(cfg: RunConfig):
 
                 if not flag_bursts_secondary_files_are_temporary:
                     logger.info(f'file saved: {nlooks_file}')
-            output_metadata_dict[LAYER_NAME_NUMBER_OF_LOOKS][1].append(nlooks_file)
 
         if save_rtc_anf:
             if flag_process:
@@ -1683,7 +1596,6 @@ def run_single_job(cfg: RunConfig):
 
                 if not flag_bursts_secondary_files_are_temporary:
                     logger.info(f'file saved: {rtc_anf_file}')
-            output_metadata_dict[layer_name_rtc_anf][1].append(rtc_anf_file)
 
         if save_rtc_anf_gamma0_to_sigma0:
             if flag_process:
@@ -1692,7 +1604,6 @@ def run_single_job(cfg: RunConfig):
 
                 if not flag_bursts_secondary_files_are_temporary:
                     logger.info(f'file saved: {rtc_anf_gamma0_to_sigma0_file}')
-            output_metadata_dict[LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0][1].append(rtc_anf_gamma0_to_sigma0_file)
 
         radar_grid_file_dict = {}
 
@@ -1756,11 +1667,6 @@ def run_single_job(cfg: RunConfig):
                 )
             burst_output_file_list.append(output_hdf5_file_burst)
 
-        # Save browse image (burst)
-        if flag_process and flag_save_browse and product_type != STATIC_LAYERS_PRODUCT_TYPE:
-            browse_image_filename = os.path.join(output_dir_bursts, f'{burst_product_id}.png')
-            burst_output_file_list.append(browse_image_filename)
-
         # Append metadata to burst GeoTIFFs
         if flag_process and (not flag_bursts_files_are_temporary or save_secondary_layers_as_hdf5):
             metadata_dict = get_metadata_dict(burst_product_id, burst, cfg, processing_datetime, is_mosaic=False)
@@ -1768,113 +1674,12 @@ def run_single_job(cfg: RunConfig):
                 if not current_file.endswith('.tif'):
                     continue
 
-        # Create mosaic HDF5
-        if save_hdf5_metadata and save_mosaics and burst_index == 0:
-            hdf5_mosaic_obj = create_hdf5_file(
-                mosaic_product_id, output_hdf5_file, orbit, burst, cfg, processing_datetime, is_mosaic=True
-            )
         output_file_list += burst_output_file_list
         t_burst_end = time.time()
         logger.info(f'elapsed time (burst): {t_burst_end - t_burst_start}')
 
         # end burst processing
         # ===========================================================
-
-    if flag_call_radar_grid and save_mosaics:
-        radar_grid_file_dict = {}
-
-        if save_secondary_layers_as_hdf5:
-            radar_grid_output_dir = scratch_path
-        else:
-            radar_grid_output_dir = output_dir
-        get_radar_grid(
-            cfg.geogrid,
-            dem_interp_method_enum,
-            mosaic_product_id,
-            radar_grid_output_dir,
-            imagery_extension,
-            save_local_inc_angle,
-            save_incidence_angle,
-            save_projection_angle,
-            save_rtc_anf_projection_angle,
-            save_range_slope,
-            save_dem,
-            dem_raster,
-            radar_grid_file_dict,
-            lookside,
-            wavelength,
-            orbit,
-            verbose=not flag_bursts_secondary_files_are_temporary,
-        )
-        radar_grid_file_dict_filenames = list(radar_grid_file_dict.values())
-        if save_secondary_layers_as_hdf5:
-            # files are temporary
-            temp_files_list += radar_grid_file_dict_filenames
-        else:
-            output_file_list += radar_grid_file_dict_filenames
-            mosaic_output_file_list += radar_grid_file_dict_filenames
-
-        # Save browse image (mosaic) using static layers
-        if flag_save_browse and product_type == STATIC_LAYERS_PRODUCT_TYPE:
-            browse_image_filename = os.path.join(output_dir, f'{mosaic_product_id}.png')
-            output_file_list.append(browse_image_filename)
-            mosaic_output_file_list.append(browse_image_filename)
-
-    if save_mosaics:
-        if len(output_imagery_list) > 0:
-            # Mosaic sub-bursts imagery
-            logger.info('mosaicking files:')
-            output_imagery_filename_list = []
-            for pol in pol_list:
-                geo_pol_filename = f'{output_dir_mosaic_raster}/{mosaic_product_id}_{pol}.' f'{imagery_extension}'
-                logger.info(f'    {geo_pol_filename}')
-                output_imagery_filename_list.append(geo_pol_filename)
-
-        if save_nlooks:
-            nlooks_list = output_metadata_dict[LAYER_NAME_NUMBER_OF_LOOKS][1]
-        else:
-            nlooks_list = []
-
-        if len(output_imagery_list) > 0:
-            mosaic_multiple_output_files(
-                output_imagery_list,
-                nlooks_list,
-                output_imagery_filename_list,
-                mosaic_mode,
-                scratch_dir=scratch_path,
-                geogrid_in=cfg.geogrid,
-                temp_files_list=temp_files_list,
-                output_raster_format=output_raster_format,
-            )
-
-            if save_imagery_as_hdf5:
-                temp_files_list += output_imagery_filename_list
-            else:
-                output_file_list += output_imagery_filename_list
-                mosaic_output_file_list += output_imagery_filename_list
-
-        # Mosaic other layers
-        for _, (output_file, input_files) in output_metadata_dict.items():
-            logger.info(f'mosaicking file: {output_file}')
-            if len(input_files) == 0:
-                continue
-
-            mosaic_single_output_file(
-                input_files,
-                nlooks_list,
-                output_file,
-                mosaic_mode,
-                scratch_dir=scratch_path,
-                geogrid_in=cfg.geogrid,
-                temp_files_list=temp_files_list,
-                output_raster_format=output_raster_format,
-            )
-
-            if save_secondary_layers_as_hdf5:
-                temp_files_list.append(output_file)
-            else:
-                output_file_list.append(output_file)
-                mosaic_output_file_list.append(output_file)
 
     # Save GeoTIFFs as cloud optimized GeoTIFFs (COGs)
     if output_imagery_format == 'COG':
