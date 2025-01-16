@@ -62,54 +62,6 @@ def snap_coord(val, snap, round_func):
     return snapped_value
 
 
-# from core.py
-def build_empty_vrt(filename, length, width, fill_value, dtype='Float32', geotransform=None):
-    """Build an empty VRT file, i.e, not pointing to any rasters,
-    with given input dimensions (length and width), data type, and
-    fill value.
-
-    Parameters
-    ----------
-    filename: str
-           VRT file name
-    length: int
-           VRT data length
-    width: int
-           VRT data width
-    fill_value: scalar
-           VRT data fill value
-    dtype: str
-           VRT data type
-    geotransform: list(scalar), optional
-           VRT data geotransform
-
-    Returns
-    -------
-    logger : logging.Logger
-           Logger object
-    """
-    vrt_contents = f'<VRTDataset rasterXSize="{width}"'
-    vrt_contents += f' rasterYSize="{length}"> \n'
-    if geotransform is not None:
-        assert len(geotransform) == 6
-        geotransform_str = ', '.join([str(x) for x in geotransform])
-        vrt_contents += f'  <GeoTransform> {geotransform_str}'
-        vrt_contents += ' </GeoTransform> \n'
-    vrt_contents += (
-        f'  <VRTRasterBand dataType="{dtype}" band="1"> \n'
-        f'    <NoDataValue>{fill_value}</NoDataValue> \n'
-        f'    <HideNoDataValue>{fill_value}</HideNoDataValue> \n'
-        f'  </VRTRasterBand> \n'
-        f'</VRTDataset> \n'
-    )
-
-    with open(filename, 'w') as out:
-        out.write(vrt_contents)
-
-    if os.path.isfile(filename):
-        print('file saved:', filename)
-
-
 # from rtc_s1.py
 def set_dict_item_recursive(dict_in, list_path, val):
     """
@@ -973,6 +925,7 @@ class RtcOptions:
     abs_rad: bool = True
     bistatic_delay: bool = True
     static_tropo: bool = True
+    save_metadata: bool = True
 
 
 def run_single_job(cfg: RunConfig, opts: RtcOptions):
@@ -990,30 +943,18 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     raster_extension = 'tif'
 
     # unpack processing parameters
-    processing_namespace = cfg.groups.processing
-    dem_interp_method_enum = processing_namespace.dem_interpolation_method_enum
-
-    save_bursts = cfg.groups.product_group.save_bursts
-    output_imagery_format = cfg.groups.product_group.output_imagery_format
-    save_imagery_as_hdf5 = output_imagery_format == 'HDF5' or output_imagery_format == 'NETCDF'
-    save_secondary_layers_as_hdf5 = cfg.groups.product_group.save_secondary_layers_as_hdf5
-
-    save_hdf5_metadata = cfg.groups.product_group.save_metadata or save_imagery_as_hdf5 or save_secondary_layers_as_hdf5
+    dem_interp_method_enum = cfg.groups.processing.dem_interpolation_method_enum
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
-
     apply_valid_samples_sub_swath_masking = cfg.groups.processing.geocoding.apply_valid_samples_sub_swath_masking
     apply_shadow_masking = cfg.groups.processing.geocoding.apply_shadow_masking
-
     if cfg.groups.processing.geocoding.algorithm_type == 'area_projection':
         geocode_algorithm = isce3.geocode.GeocodeOutputMode.AREA_PROJECTION
     else:
         geocode_algorithm = isce3.geocode.GeocodeOutputMode.INTERP
-
     az_step_meters = cfg.groups.processing.correction_lut_azimuth_spacing_in_meters
     rg_step_meters = cfg.groups.processing.correction_lut_range_spacing_in_meters
-
     memory_mode = geocode_namespace.memory_mode
     geogrid_upsampling = geocode_namespace.geogrid_upsampling
     shadow_dilation_size = geocode_namespace.shadow_dilation_size
@@ -1027,10 +968,8 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     save_rtc_anf_projection_angle = geocode_namespace.save_rtc_anf_projection_angle
     save_range_slope = geocode_namespace.save_range_slope
     save_nlooks = geocode_namespace.save_nlooks
-
     save_dem = geocode_namespace.save_dem
     save_mask = geocode_namespace.save_mask
-
     flag_call_radar_grid = (
         save_incidence_angle
         or save_local_inc_angle
@@ -1042,13 +981,10 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
     # unpack RTC run parameters
     rtc_namespace = cfg.groups.processing.rtc
-
-    # only 2 RTC algorithms supported: area_projection (default) & bilinear_distribution
     if rtc_namespace.algorithm_type == 'bilinear_distribution':
         rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_BILINEAR_DISTRIBUTION
     else:
         rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_AREA_PROJECTION
-
     input_terrain_radiometry = rtc_namespace.input_terrain_radiometry
     input_terrain_radiometry_enum = rtc_namespace.input_terrain_radiometry_enum
     output_terrain_radiometry = rtc_namespace.output_type
@@ -1061,11 +997,9 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     save_rtc_anf, save_rtc_anf_gamma0_to_sigma0 = read_and_validate_rtc_anf_flags(
         geocode_namespace, opts.rtc, output_terrain_radiometry_enum, logger
     )
-
     rtc_min_value_db = rtc_namespace.rtc_min_value_db
     rtc_upsampling = rtc_namespace.dem_upsampling
     rtc_area_beta_mode = rtc_namespace.area_beta_mode
-
     if rtc_area_beta_mode == 'pixel_area':
         rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.PIXEL_AREA
     elif rtc_area_beta_mode == 'projection_angle':
@@ -1100,7 +1034,6 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     orbit = None
 
     # iterate over sub-burts
-    # forrest
     for burst_index, (burst_id, burst_pol_dict) in enumerate(cfg.bursts.items()):
         t_burst_start = time.time()
         logger.info(f'Processing burst: {burst_id} ({burst_index+1}/' f'{n_bursts})')
@@ -1111,21 +1044,15 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         pol_list = list(burst_pol_dict.keys())
         burst = burst_pol_dict[pol_list[0]]
         burst_product_id = 'burst1'
-        flag_bursts_files_are_temporary = not save_bursts or save_imagery_as_hdf5
-        flag_bursts_secondary_files_are_temporary = not save_bursts or save_secondary_layers_as_hdf5
+        flag_bursts_files_are_temporary = False
+        flag_bursts_secondary_files_are_temporary = False
 
         burst_scratch_path = f'{opts.scratch_dir}/{burst_id}/'
         os.makedirs(burst_scratch_path, exist_ok=True)
 
         output_dir_bursts = os.path.join(opts.output_dir, burst_id)
         os.makedirs(output_dir_bursts, exist_ok=True)
-
-        if not save_bursts or save_secondary_layers_as_hdf5:
-            # burst files are saved in scratch dir
-            output_dir_sec_bursts = burst_scratch_path
-        else:
-            # burst files (individual or HDF5) are saved in burst_id dir
-            output_dir_sec_bursts = output_dir_bursts
+        output_dir_sec_bursts = output_dir_bursts
 
         logger.info('    burst geogrid:')
         for line in str(geogrid).split('\n'):
@@ -1140,7 +1067,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         geogrid.start_y = snap_coord(geogrid.start_y, y_snap, np.ceil)
 
         # Create burst HDF5
-        if save_hdf5_metadata and save_bursts:
+        if opts.save_metadata:
             hdf5_file_output_dir = os.path.join(opts.output_dir, burst_id)
             os.makedirs(hdf5_file_output_dir, exist_ok=True)
             output_hdf5_file_burst = os.path.join(hdf5_file_output_dir, f'{burst_product_id}.h5')
@@ -1434,7 +1361,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         del geo_burst_raster
 
         # Output imagery list contains multi-band files that will be used for mosaicking
-        if save_mask and not save_secondary_layers_as_hdf5:
+        if save_mask:
             set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
         # If burst imagery is not temporary, separate polarization channels
@@ -1466,7 +1393,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
         radar_grid_file_dict = {}
 
-        if flag_call_radar_grid and save_bursts:
+        if flag_call_radar_grid:
             get_radar_grid(
                 geogrid,
                 dem_interp_method_enum,
