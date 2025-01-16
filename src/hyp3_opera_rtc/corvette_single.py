@@ -1,34 +1,12 @@
-"""
-RTC-S1 Science Application Software (single job)
-"""
-
 import logging
 import os
 import time
-from datetime import datetime
 
 import isce3
 import numpy as np
 import yaml
 from osgeo import gdal
-from rtc.core import build_empty_vrt, check_ancillary_inputs, save_as_cog
-from rtc.geogrid import snap_coord
-from rtc.h5_prep import (
-    DATA_BASE_GROUP,
-    LAYER_NAME_DEM,
-    LAYER_NAME_INCIDENCE_ANGLE,
-    LAYER_NAME_LAYOVER_SHADOW_MASK,
-    LAYER_NAME_LOCAL_INCIDENCE_ANGLE,
-    LAYER_NAME_NUMBER_OF_LOOKS,
-    LAYER_NAME_PROJECTION_ANGLE,
-    LAYER_NAME_RANGE_SLOPE,
-    LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0,
-    LAYER_NAME_RTC_ANF_PROJECTION_ANGLE,
-    create_hdf5_file,
-    get_metadata_dict,
-    save_hdf5_file,
-)
-from rtc.runconfig import STATIC_LAYERS_PRODUCT_TYPE, RunConfig
+from rtc.runconfig import RunConfig
 from s1reader.s1_burst_slc import Sentinel1BurstSlc
 from scipy import ndimage
 
@@ -39,6 +17,96 @@ STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR = 3
 
 STATIC_LAYERS_AZ_MARGIN = 1.2
 STATIC_LAYERS_RG_MARGIN = 0.2
+
+# from h5_prep.py
+STATIC_LAYERS_PRODUCT_TYPE = 'RTC_S1_STATIC'
+DATA_BASE_GROUP = '/data'
+LAYER_NAME_VV = 'VV'
+LAYER_NAME_VH = 'VH'
+LAYER_NAME_LAYOVER_SHADOW_MASK = 'mask'
+LAYER_NAME_RTC_ANF_GAMMA0_TO_BETA0 = 'rtc_anf_gamma0_to_beta0'
+LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0 = 'rtc_anf_gamma0_to_sigma0'
+LAYER_NAME_RTC_ANF_SIGMA0_TO_BETA0 = 'rtc_anf_sigma0_to_beta0'
+LAYER_NAME_RTC_ANF_BETA0_TO_BETA0 = 'rtc_anf_beta0_to_beta0'
+LAYER_NAME_NUMBER_OF_LOOKS = 'number_of_looks'
+LAYER_NAME_INCIDENCE_ANGLE = 'incidence_angle'
+LAYER_NAME_LOCAL_INCIDENCE_ANGLE = 'local_incidence_angle'
+LAYER_NAME_PROJECTION_ANGLE = 'projection_angle'
+LAYER_NAME_RTC_ANF_PROJECTION_ANGLE = 'rtc_anf_projection_angle'
+LAYER_NAME_RANGE_SLOPE = 'range_slope'
+LAYER_NAME_DEM = 'interpolated_dem'
+
+
+# from geogrid.py
+def snap_coord(val, snap, round_func):
+    """
+    Returns the snapped values of the input value
+
+    Parameters
+    -----------
+    val : float
+        Input value to snap
+    snap : float
+        Snapping step
+    round_func : function pointer
+        A function used to round `val` i.e. round, ceil, floor
+
+    Return:
+    --------
+    snapped_value : float
+        snapped value of `var` by `snap`
+
+    """
+    snapped_value = round_func(float(val) / snap) * snap
+    return snapped_value
+
+
+# from core.py
+def build_empty_vrt(filename, length, width, fill_value, dtype='Float32', geotransform=None):
+    """Build an empty VRT file, i.e, not pointing to any rasters,
+    with given input dimensions (length and width), data type, and
+    fill value.
+
+    Parameters
+    ----------
+    filename: str
+           VRT file name
+    length: int
+           VRT data length
+    width: int
+           VRT data width
+    fill_value: scalar
+           VRT data fill value
+    dtype: str
+           VRT data type
+    geotransform: list(scalar), optional
+           VRT data geotransform
+
+    Returns
+    -------
+    logger : logging.Logger
+           Logger object
+    """
+    vrt_contents = f'<VRTDataset rasterXSize="{width}"'
+    vrt_contents += f' rasterYSize="{length}"> \n'
+    if geotransform is not None:
+        assert len(geotransform) == 6
+        geotransform_str = ', '.join([str(x) for x in geotransform])
+        vrt_contents += f'  <GeoTransform> {geotransform_str}'
+        vrt_contents += ' </GeoTransform> \n'
+    vrt_contents += (
+        f'  <VRTRasterBand dataType="{dtype}" band="1"> \n'
+        f'    <NoDataValue>{fill_value}</NoDataValue> \n'
+        f'    <HideNoDataValue>{fill_value}</HideNoDataValue> \n'
+        f'  </VRTRasterBand> \n'
+        f'</VRTDataset> \n'
+    )
+
+    with open(filename, 'w') as out:
+        out.write(vrt_contents)
+
+    if os.path.isfile(filename):
+        print('file saved:', filename)
 
 
 # from rtc_s1.py
@@ -919,13 +987,9 @@ def run_single_job(cfg: RunConfig):
     flag_apply_rtc = processing_namespace.apply_rtc
     flag_apply_thermal_noise_correction = processing_namespace.apply_thermal_noise_correction
     flag_apply_abs_rad_correction = processing_namespace.apply_absolute_radiometric_correction
-    check_ancillary_inputs_coverage = processing_namespace.check_ancillary_inputs_coverage
 
     apply_bistatic_delay_correction = cfg.groups.processing.apply_bistatic_delay_correction
     apply_static_tropospheric_delay_correction = cfg.groups.processing.apply_static_tropospheric_delay_correction
-
-    # set processing_datetime
-    processing_datetime = datetime.now()
 
     # get mosaic_product_id
     burst_id = next(iter(cfg.bursts))
@@ -939,11 +1003,7 @@ def run_single_job(cfg: RunConfig):
     save_bursts = cfg.groups.product_group.save_bursts
     # save_mosaics = cfg.groups.product_group.save_mosaics
     flag_save_browse = cfg.groups.product_group.save_browse
-
     output_imagery_format = cfg.groups.product_group.output_imagery_format
-    output_imagery_compression = cfg.groups.product_group.output_imagery_compression
-    output_imagery_nbits = cfg.groups.product_group.output_imagery_nbits
-
     save_imagery_as_hdf5 = output_imagery_format == 'HDF5' or output_imagery_format == 'NETCDF'
     save_secondary_layers_as_hdf5 = cfg.groups.product_group.save_secondary_layers_as_hdf5
 
@@ -1012,7 +1072,6 @@ def run_single_job(cfg: RunConfig):
     input_terrain_radiometry_enum = rtc_namespace.input_terrain_radiometry_enum
     output_terrain_radiometry = rtc_namespace.output_type
     output_terrain_radiometry_enum = rtc_namespace.output_type_enum
-    output_radiometry_str = f'radar backscatter {output_terrain_radiometry}'
     if flag_apply_rtc:
         layer_name_rtc_anf = f'rtc_anf_{output_terrain_radiometry}_to_' f'{input_terrain_radiometry}'
     else:
@@ -1035,10 +1094,6 @@ def run_single_job(cfg: RunConfig):
     else:
         err_msg = 'ERROR invalid area beta mode:' f' {rtc_area_beta_mode}'
         raise ValueError(err_msg)
-
-    # check ancillary input (DEM)
-    metadata_dict = {}
-    check_ancillary_inputs(check_ancillary_inputs_coverage, cfg.dem, cfg.geogrid, metadata_dict, logger=logger)
 
     # Common initializations
     dem_raster = isce3.io.Raster(cfg.dem)
@@ -1527,39 +1582,6 @@ def run_single_job(cfg: RunConfig):
             if flag_save_browse and product_type == STATIC_LAYERS_PRODUCT_TYPE:
                 browse_image_filename = os.path.join(output_dir_bursts, f'{burst_product_id}.png')
                 burst_output_file_list.append(browse_image_filename)
-
-        # Create burst HDF5
-        if flag_process and save_hdf5_metadata and save_bursts:
-            hdf5_file_output_dir = os.path.join(output_dir, burst_id)
-            with create_hdf5_file(
-                burst_product_id, output_hdf5_file_burst, orbit, burst, cfg, processing_datetime, is_mosaic=False
-            ) as hdf5_burst_obj:
-                save_hdf5_file(
-                    hdf5_burst_obj,
-                    output_hdf5_file_burst,
-                    clip_max,
-                    clip_min,
-                    output_radiometry_str,
-                    geogrid,
-                    pol_list,
-                    geo_burst_filename,
-                    nlooks_file,
-                    rtc_anf_file,
-                    layer_name_rtc_anf,
-                    rtc_anf_gamma0_to_sigma0_file,
-                    layover_shadow_mask_file,
-                    radar_grid_file_dict,
-                    save_imagery=save_imagery_as_hdf5,
-                    save_secondary_layers=save_secondary_layers_as_hdf5,
-                )
-            burst_output_file_list.append(output_hdf5_file_burst)
-
-        # Append metadata to burst GeoTIFFs
-        if flag_process and (not flag_bursts_files_are_temporary or save_secondary_layers_as_hdf5):
-            metadata_dict = get_metadata_dict(burst_product_id, burst, cfg, processing_datetime, is_mosaic=False)
-            for current_file in burst_output_file_list:
-                if not current_file.endswith('.tif'):
-                    continue
 
         output_file_list += burst_output_file_list
         t_burst_end = time.time()
