@@ -15,7 +15,6 @@ from rtc.core import build_empty_vrt, check_ancillary_inputs, save_as_cog
 from rtc.geogrid import snap_coord
 from rtc.h5_prep import (
     DATA_BASE_GROUP,
-    DATE_TIME_FILENAME_FORMAT,
     LAYER_NAME_DEM,
     LAYER_NAME_INCIDENCE_ANGLE,
     LAYER_NAME_LAYOVER_SHADOW_MASK,
@@ -27,11 +26,9 @@ from rtc.h5_prep import (
     LAYER_NAME_RTC_ANF_PROJECTION_ANGLE,
     create_hdf5_file,
     get_metadata_dict,
-    get_product_version,
     save_hdf5_file,
 )
 from rtc.runconfig import STATIC_LAYERS_PRODUCT_TYPE, RunConfig
-from rtc.version import VERSION as SOFTWARE_VERSION
 from s1reader.s1_burst_slc import Sentinel1BurstSlc
 from scipy import ndimage
 
@@ -164,93 +161,6 @@ def split_runconfig(cfg_in, child_output_dir, burst_product_id_list, child_scrat
             yaml.dump(runconfig_dict_out, fout)
 
     return runconfig_burst_list, logfile_burst_list
-
-
-def populate_product_id(
-    product_id,
-    burst_in,
-    processing_datetime,
-    product_version,
-    pixel_spacing,
-    product_type,
-    rtc_s1_static_validity_start_date,
-    is_mosaic,
-):
-    """
-    Populate product_id string with S1/RTC-S1 parameters
-
-    Parameters
-    ----------
-    product_id: str
-        Input product ID string
-    burst_in: Sentinel1BurstSlc
-        Input burst SLC
-    processing_datetime: datetime
-        Processing start datetime
-    product_version: scalar
-        Product version
-    pixel_spacing: scalar
-        Pixel spacing
-    product_type: str
-        Product type
-    rtc_s1_static_validity_start_date: int
-        Validity start date (only applicable for the RTC-S1-STATIC product)
-        in the format YYYYMMDD
-    is_mosaic: bool
-        Flag indicating whether the product ID refers to a mosaic or a
-        burst product
-
-
-    Returns
-    -------
-    _: str
-        Product ID populated with S1/RTC-S1 parameters
-    """
-
-    if product_id is None:
-        product_id = '{product_id}'
-
-    if '{product_id}' in product_id and product_type != STATIC_LAYERS_PRODUCT_TYPE:
-        product_id = (
-            'OPERA_L2_RTC-S1_{burst_id}_{sensing_start_datetime}'
-            '_{processing_datetime}_{sensor}_{pixel_spacing}'
-            '_{product_version}'
-        )
-    elif '{product_id}' in product_id:
-        if not rtc_s1_static_validity_start_date:
-            error_msg = 'ERROR please provide a' + ' `rtc_s1_static_validity_start_date`'
-            raise ValueError(error_msg)
-        product_id = (
-            'OPERA_L2_RTC-S1-STATIC_{burst_id}'
-            f'_{rtc_s1_static_validity_start_date}'
-            '_{processing_datetime}_{sensor}_{pixel_spacing}'
-            '_{product_version}'
-        )
-
-    # Populate product_id sensing_start_datetime
-    sensing_start_datetime = burst_in.sensing_start.strftime(DATE_TIME_FILENAME_FORMAT)
-    product_id = product_id.replace('{sensing_start_datetime}', sensing_start_datetime)
-
-    # Populate product_id processing_datetime
-    processing_datetime_filename = processing_datetime.strftime(DATE_TIME_FILENAME_FORMAT)
-    product_id = product_id.replace('{processing_datetime}', processing_datetime_filename)
-
-    # Populate product_id sensor
-    product_id = product_id.replace('{sensor}', burst_in.platform_id)
-
-    # Populate product_id pixel_spacing
-    product_id = product_id.replace('{pixel_spacing}', f'{pixel_spacing}')
-
-    # Populate product_id version
-    product_id = product_id.replace('{product_version}', f'v{product_version}')
-
-    if not is_mosaic:
-        burst_id_file_name = str(burst_in.burst_id).upper().replace('_', '-')
-        product_id = product_id.replace('{burst_id}', f'{burst_id_file_name}')
-    else:
-        product_id = product_id.replace('_{burst_id}', '')
-
-    return product_id
 
 
 def compute_correction_lut(
@@ -999,14 +909,9 @@ def run_single_job(cfg: RunConfig):
     # Start tracking processing time
     t_start = time.time()
     time_stamp = str(float(time.time()))
-    logger.info('OPERA RTC-S1 Science Application Software (SAS)' f' v{SOFTWARE_VERSION}')
 
     # primary executable
     product_type = cfg.groups.primary_executable.product_type
-    rtc_s1_static_validity_start_date = cfg.groups.product_group.rtc_s1_static_validity_start_date
-
-    product_version_runconfig = cfg.groups.product_group.product_version
-    product_version = get_product_version(product_version_runconfig)
 
     # unpack processing parameters
     processing_namespace = cfg.groups.processing
@@ -1019,9 +924,6 @@ def run_single_job(cfg: RunConfig):
     apply_bistatic_delay_correction = cfg.groups.processing.apply_bistatic_delay_correction
     apply_static_tropospheric_delay_correction = cfg.groups.processing.apply_static_tropospheric_delay_correction
 
-    # read product path group / output format
-    runconfig_product_id = cfg.groups.product_group.product_id
-
     # set processing_datetime
     processing_datetime = datetime.now()
 
@@ -1029,7 +931,6 @@ def run_single_job(cfg: RunConfig):
     burst_id = next(iter(cfg.bursts))
     burst_pol_dict = cfg.bursts[burst_id]
     pol_list = list(burst_pol_dict.keys())
-    pixel_spacing_avg = int((cfg.geogrid.spacing_x + abs(cfg.geogrid.spacing_y)) / 2)
 
     scratch_path = os.path.join(cfg.groups.product_group.scratch_path, f'temp_{time_stamp}')
     output_dir = cfg.groups.product_group.output_dir
@@ -1176,21 +1077,7 @@ def run_single_job(cfg: RunConfig):
         geogrid = cfg.geogrids[burst_id]
         pol_list = list(burst_pol_dict.keys())
         burst = burst_pol_dict[pol_list[0]]
-
-        # populate burst_product_id
-        pixel_spacing_avg = int((geogrid.spacing_x + abs(geogrid.spacing_y)) / 2)
-        burst_product_id = populate_product_id(
-            runconfig_product_id,
-            burst,
-            processing_datetime,
-            product_version,
-            pixel_spacing_avg,
-            product_type,
-            rtc_s1_static_validity_start_date,
-            is_mosaic=False,
-        )
-
-        logger.info(f'    product ID: {burst_product_id}')
+        burst_product_id = 'burst1'
 
         if product_type == STATIC_LAYERS_PRODUCT_TYPE:
             # for static layers, we just use the first polarization as
@@ -1680,32 +1567,6 @@ def run_single_job(cfg: RunConfig):
 
         # end burst processing
         # ===========================================================
-
-    # Save GeoTIFFs as cloud optimized GeoTIFFs (COGs)
-    if output_imagery_format == 'COG':
-        logger.info('Saving files as Cloud-Optimized GeoTIFFs (COGs)')
-        for filename in output_file_list:
-            if not filename.endswith('.tif'):
-                continue
-
-            logger.info(f'    processing file: {filename}')
-
-            # if file is backscatter, use the 'AVERAGE' mode to create overlays
-            options_save_as_cog = {}
-            gdal_ds = gdal.Open(filename, gdal.GA_ReadOnly)
-            description = gdal_ds.GetRasterBand(1).GetDescription()
-            if description and 'backscatter' in description.lower():
-                options_save_as_cog['ovr_resamp_algorithm'] = 'AVERAGE'
-            del gdal_ds
-
-            save_as_cog(
-                filename,
-                scratch_path,
-                logger,
-                compression=output_imagery_compression,
-                nbits=output_imagery_nbits,
-                **options_save_as_cog,
-            )
 
     for filename in temp_files_list:
         if not os.path.isfile(filename):
