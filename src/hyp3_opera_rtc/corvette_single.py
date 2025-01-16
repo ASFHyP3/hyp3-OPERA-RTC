@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from dataclasses import dataclass
 
 import isce3
 import numpy as np
@@ -963,7 +964,16 @@ def get_radar_grid(
         return
 
 
-def run_single_job(cfg: RunConfig):
+@dataclass
+class RtcOptions:
+    rtc: bool = True
+    thermal_noise: bool = True
+    abs_rad: bool = True
+    bistatic_delay: bool = True
+    static_tropo: bool = True
+
+
+def run_single_job(cfg: RunConfig, opts: RtcOptions):
     """
     Run geocode burst workflow with user-defined
     args stored in dictionary runconfig `cfg`
@@ -973,23 +983,12 @@ def run_single_job(cfg: RunConfig):
     cfg: RunConfig
         RunConfig object with user runconfig options
     """
-
-    # Start tracking processing time
     t_start = time.time()
     time_stamp = str(float(time.time()))
-
-    # primary executable
-    product_type = cfg.groups.primary_executable.product_type
 
     # unpack processing parameters
     processing_namespace = cfg.groups.processing
     dem_interp_method_enum = processing_namespace.dem_interpolation_method_enum
-    flag_apply_rtc = processing_namespace.apply_rtc
-    flag_apply_thermal_noise_correction = processing_namespace.apply_thermal_noise_correction
-    flag_apply_abs_rad_correction = processing_namespace.apply_absolute_radiometric_correction
-
-    apply_bistatic_delay_correction = cfg.groups.processing.apply_bistatic_delay_correction
-    apply_static_tropospheric_delay_correction = cfg.groups.processing.apply_static_tropospheric_delay_correction
 
     # get mosaic_product_id
     burst_id = next(iter(cfg.bursts))
@@ -1002,7 +1001,6 @@ def run_single_job(cfg: RunConfig):
     # populate processing parameters
     save_bursts = cfg.groups.product_group.save_bursts
     # save_mosaics = cfg.groups.product_group.save_mosaics
-    flag_save_browse = cfg.groups.product_group.save_browse
     output_imagery_format = cfg.groups.product_group.output_imagery_format
     save_imagery_as_hdf5 = output_imagery_format == 'HDF5' or output_imagery_format == 'NETCDF'
     save_secondary_layers_as_hdf5 = cfg.groups.product_group.save_secondary_layers_as_hdf5
@@ -1066,13 +1064,13 @@ def run_single_job(cfg: RunConfig):
     input_terrain_radiometry_enum = rtc_namespace.input_terrain_radiometry_enum
     output_terrain_radiometry = rtc_namespace.output_type
     output_terrain_radiometry_enum = rtc_namespace.output_type_enum
-    if flag_apply_rtc:
+    if opts.rtc:
         layer_name_rtc_anf = f'rtc_anf_{output_terrain_radiometry}_to_' f'{input_terrain_radiometry}'
     else:
         layer_name_rtc_anf = ''
 
     save_rtc_anf, save_rtc_anf_gamma0_to_sigma0 = read_and_validate_rtc_anf_flags(
-        geocode_namespace, flag_apply_rtc, output_terrain_radiometry_enum, logger
+        geocode_namespace, opts.rtc, output_terrain_radiometry_enum, logger
     )
 
     rtc_min_value_db = rtc_namespace.rtc_min_value_db
@@ -1095,10 +1093,9 @@ def run_single_job(cfg: RunConfig):
     zero_doppler = isce3.core.LUT2d()
     threshold = cfg.geo2rdr_params.threshold
     maxiter = cfg.geo2rdr_params.numiter
-    exponent = 1 if (flag_apply_thermal_noise_correction or flag_apply_abs_rad_correction) else 2
+    exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
 
     # output mosaics variables
-    output_imagery_list = []
     output_file_list = []
     temp_files_list = []
 
@@ -1176,14 +1173,6 @@ def run_single_job(cfg: RunConfig):
         logger.info('    reading burst SLCs')
 
         radar_grid = burst.as_isce3_radargrid()
-        if product_type == STATIC_LAYERS_PRODUCT_TYPE:
-            radar_grid = radar_grid.offset_and_resize(
-                -int((STATIC_LAYERS_AZ_MARGIN) * radar_grid.length),
-                -int((STATIC_LAYERS_RG_MARGIN) * radar_grid.width),
-                int((1 + 2 * STATIC_LAYERS_AZ_MARGIN) * radar_grid.length),
-                int((1 + 2 * STATIC_LAYERS_RG_MARGIN) * radar_grid.width),
-            )
-        # native_doppler = burst.doppler.lut2d
         orbit = burst.orbit
         wavelength = burst.wavelength
         lookside = radar_grid.lookside
@@ -1192,20 +1181,13 @@ def run_single_job(cfg: RunConfig):
         for pol, burst_pol in burst_pol_dict.items():
             temp_slc_path = os.path.join(burst_scratch_path, f'slc_{pol}.vrt')
             temp_slc_corrected_path = os.path.join(burst_scratch_path, f'slc_{pol}_corrected.{imagery_extension}')
-
-            if product_type == STATIC_LAYERS_PRODUCT_TYPE:
-                fill_value = 1
-                build_empty_vrt(temp_slc_path, radar_grid.length, radar_grid.width, fill_value)
-                input_burst_filename = temp_slc_path
-                temp_files_list.append(temp_slc_path)
-
-            elif flag_apply_thermal_noise_correction or flag_apply_abs_rad_correction:
+            if opts.thermal_noise or opts.abs_rad:
                 apply_slc_corrections(
                     burst_pol,
                     temp_slc_path,
                     temp_slc_corrected_path,
                     flag_output_complex=False,
-                    flag_thermal_correction=flag_apply_thermal_noise_correction,
+                    flag_thermal_correction=opts.thermal_noise,
                     flag_apply_abs_rad_correction=True,
                 )
                 input_burst_filename = temp_slc_corrected_path
@@ -1265,7 +1247,7 @@ def run_single_job(cfg: RunConfig):
         layover_shadow_mask_geocode_kwargs = {}
 
         # get sub_swaths metadata
-        if apply_valid_samples_sub_swath_masking and product_type != STATIC_LAYERS_PRODUCT_TYPE:
+        if apply_valid_samples_sub_swath_masking:
             # Extract burst boundaries and create sub_swaths object to mask
             # invalid radar samples
             n_subswaths = 1
@@ -1284,7 +1266,7 @@ def run_single_job(cfg: RunConfig):
             layover_shadow_mask_geocode_kwargs['sub_swaths'] = sub_swaths
 
         # Calculate geolocation correction LUT
-        if apply_bistatic_delay_correction or apply_static_tropospheric_delay_correction:
+        if opts.bistatic_delay or opts.static_tropo:
             # Calculates the LUTs for one polarization in `burst_pol_dict`
             pol_burst_for_lut = next(iter(burst_pol_dict))
             burst_for_lut = burst_pol_dict[pol_burst_for_lut]
@@ -1294,8 +1276,8 @@ def run_single_job(cfg: RunConfig):
                 burst_scratch_path,
                 rg_step_meters,
                 az_step_meters,
-                apply_bistatic_delay_correction,
-                apply_static_tropospheric_delay_correction,
+                opts.bistatic_delay,
+                opts.static_tropo,
             )
 
             if az_lut is not None:
@@ -1322,15 +1304,7 @@ def run_single_job(cfg: RunConfig):
                     f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{imagery_extension}'
                 )
             logger.info('    computing layover shadow mask for' f' {burst_id}')
-
-            if product_type == STATIC_LAYERS_PRODUCT_TYPE:
-                radar_grid_layover_shadow_mask = radar_grid.multilook(
-                    STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR,
-                    STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR,
-                )
-            else:
-                radar_grid_layover_shadow_mask = radar_grid
-
+            radar_grid_layover_shadow_mask = radar_grid
             slantrange_layover_shadow_mask_raster = compute_layover_shadow_mask(
                 radar_grid_layover_shadow_mask,
                 orbit,
@@ -1362,11 +1336,7 @@ def run_single_job(cfg: RunConfig):
             # STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR. If that
             # number is not unitary, the layover shadow mask cannot be used
             # with geocoding
-            if (
-                apply_shadow_masking
-                and product_type != STATIC_LAYERS_PRODUCT_TYPE
-                or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1
-            ):
+            if apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
                 geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
         else:
             layover_shadow_mask_file = None
@@ -1452,7 +1422,7 @@ def run_single_job(cfg: RunConfig):
             dem_raster=dem_raster,
             output_mode=geocode_algorithm,
             geogrid_upsampling=geogrid_upsampling,
-            flag_apply_rtc=flag_apply_rtc,
+            flag_apply_rtc=opts.rtc,
             input_terrain_radiometry=input_terrain_radiometry_enum,
             output_terrain_radiometry=output_terrain_radiometry_enum,
             exponent=exponent,
@@ -1476,16 +1446,12 @@ def run_single_job(cfg: RunConfig):
 
         del geo_burst_raster
 
-        # Output imagery list contains multi-band files that
-        # will be used for mosaicking
-        if product_type != STATIC_LAYERS_PRODUCT_TYPE:
-            output_imagery_list.append(geo_burst_filename)
-
+        # Output imagery list contains multi-band files that will be used for mosaicking
         if save_mask and not save_secondary_layers_as_hdf5:
             set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
         # If burst imagery is not temporary, separate polarization channels
-        if not flag_bursts_files_are_temporary and product_type != STATIC_LAYERS_PRODUCT_TYPE:
+        if not flag_bursts_files_are_temporary:
             _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, output_raster_format, logger)
 
             burst_output_file_list += output_burst_imagery_list
@@ -1541,12 +1507,6 @@ def run_single_job(cfg: RunConfig):
                 temp_files_list += radar_grid_file_dict_filenames
             else:
                 burst_output_file_list += radar_grid_file_dict_filenames
-
-            # Save browse image (burst) using static layers
-            if flag_save_browse and product_type == STATIC_LAYERS_PRODUCT_TYPE:
-                browse_image_filename = os.path.join(output_dir_bursts, f'{burst_product_id}.png')
-                burst_output_file_list.append(browse_image_filename)
-
         output_file_list += burst_output_file_list
         t_burst_end = time.time()
         logger.info(f'elapsed time (burst): {t_burst_end - t_burst_start}')
