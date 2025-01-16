@@ -962,22 +962,9 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     clip_max = geocode_namespace.clip_max
     clip_min = geocode_namespace.clip_min
     flag_upsample_radar_grid = geocode_namespace.upsample_radargrid
-    save_incidence_angle = geocode_namespace.save_incidence_angle
-    save_local_inc_angle = geocode_namespace.save_local_inc_angle
-    save_projection_angle = geocode_namespace.save_projection_angle
-    save_rtc_anf_projection_angle = geocode_namespace.save_rtc_anf_projection_angle
-    save_range_slope = geocode_namespace.save_range_slope
     save_nlooks = geocode_namespace.save_nlooks
-    save_dem = geocode_namespace.save_dem
     save_mask = geocode_namespace.save_mask
-    flag_call_radar_grid = (
-        save_incidence_angle
-        or save_local_inc_angle
-        or save_projection_angle
-        or save_rtc_anf_projection_angle
-        or save_dem
-        or save_range_slope
-    )
+    flag_call_radar_grid = True
 
     # unpack RTC run parameters
     rtc_namespace = cfg.groups.processing.rtc
@@ -1018,10 +1005,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     maxiter = cfg.geo2rdr_params.numiter
     exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
 
-    # output mosaics variables
-    output_file_list = []
-    temp_files_list = []
-
+    tmp_files_list = []
     os.makedirs(opts.output_dir, exist_ok=True)
     os.makedirs(opts.scratch_dir, exist_ok=True)
     vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
@@ -1105,16 +1089,16 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
                     flag_apply_abs_rad_correction=True,
                 )
                 input_burst_filename = temp_slc_corrected_path
-                temp_files_list.append(temp_slc_corrected_path)
+                tmp_files_list.append(temp_slc_corrected_path)
             else:
                 input_burst_filename = temp_slc_path
 
-            temp_files_list.append(temp_slc_path)
+            tmp_files_list.append(temp_slc_path)
             input_file_list.append(input_burst_filename)
 
         # At this point, burst imagery files are always temporary
         geo_burst_filename = f'{burst_scratch_path}/{burst_product_id}.{raster_extension}'
-        temp_files_list.append(geo_burst_filename)
+        tmp_files_list.append(geo_burst_filename)
 
         out_geo_nlooks_obj = None
         if save_nlooks:
@@ -1123,7 +1107,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             )
 
             if flag_bursts_secondary_files_are_temporary:
-                temp_files_list.append(nlooks_file)
+                tmp_files_list.append(nlooks_file)
             else:
                 burst_output_file_list.append(nlooks_file)
         else:
@@ -1134,7 +1118,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}' f'_{layer_name_rtc_anf}.{raster_extension}'
 
             if flag_bursts_secondary_files_are_temporary:
-                temp_files_list.append(rtc_anf_file)
+                tmp_files_list.append(rtc_anf_file)
             else:
                 burst_output_file_list.append(rtc_anf_file)
 
@@ -1149,7 +1133,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             )
 
             if flag_bursts_secondary_files_are_temporary:
-                temp_files_list.append(rtc_anf_gamma0_to_sigma0_file)
+                tmp_files_list.append(rtc_anf_gamma0_to_sigma0_file)
             else:
                 burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
 
@@ -1238,7 +1222,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             )
 
             if flag_layover_shadow_mask_is_temporary:
-                temp_files_list.append(layover_shadow_mask_file)
+                tmp_files_list.append(layover_shadow_mask_file)
             else:
                 burst_output_file_list.append(layover_shadow_mask_file)
                 logger.info(f'file saved: {layover_shadow_mask_file}')
@@ -1283,7 +1267,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             temp_vrt_path = f'{burst_scratch_path}/slc.vrt'
             gdal.BuildVRT(temp_vrt_path, input_file_list, options=vrt_options_mosaic)
             rdr_burst_raster = isce3.io.Raster(temp_vrt_path)
-            temp_files_list.append(temp_vrt_path)
+            tmp_files_list.append(temp_vrt_path)
 
         # Generate output geocoded burst raster
         geo_burst_raster = isce3.io.Raster(
@@ -1400,12 +1384,12 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
                 burst_product_id,
                 output_dir_sec_bursts,
                 raster_extension,
-                save_local_inc_angle,
-                save_incidence_angle,
-                save_projection_angle,
-                save_rtc_anf_projection_angle,
-                save_range_slope,
-                save_dem,
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
                 dem_raster,
                 radar_grid_file_dict,
                 lookside,
@@ -1418,17 +1402,17 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
             if flag_bursts_secondary_files_are_temporary:
                 # files are temporary
-                temp_files_list += radar_grid_file_dict_filenames
+                tmp_files_list += radar_grid_file_dict_filenames
             else:
                 burst_output_file_list += radar_grid_file_dict_filenames
-        output_file_list += burst_output_file_list
+
         t_burst_end = time.time()
         logger.info(f'elapsed time (burst): {t_burst_end - t_burst_start}')
 
         # end burst processing
         # ===========================================================
 
-    for filename in temp_files_list:
+    for filename in tmp_files_list:
         if not os.path.isfile(filename):
             continue
         os.remove(filename)
