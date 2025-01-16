@@ -25,11 +25,9 @@ from rtc.h5_prep import (
     LAYER_NAME_RANGE_SLOPE,
     LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0,
     LAYER_NAME_RTC_ANF_PROJECTION_ANGLE,
-    all_metadata_dict_to_geotiff_metadata_dict,
     create_hdf5_file,
     get_metadata_dict,
     get_product_version,
-    layer_names_dict,
     save_hdf5_file,
 )
 from rtc.mosaic_geobursts import mosaic_multiple_output_files, mosaic_single_output_file
@@ -871,6 +869,135 @@ def read_and_validate_rtc_anf_flags(geocode_namespace, flag_apply_rtc, output_te
     return save_rtc_anf, save_rtc_anf_gamma0_to_sigma0
 
 
+def get_radar_grid(
+    geogrid,
+    dem_interp_method_enum,
+    product_id,
+    output_dir,
+    extension,
+    save_local_inc_angle,
+    save_incidence_angle,
+    save_projection_angle,
+    save_rtc_anf_projection_angle,
+    save_range_slope,
+    save_dem,
+    dem_raster,
+    radar_grid_file_dict,
+    lookside,
+    wavelength,
+    orbit,
+    verbose=True,
+):
+    output_obj_list = []
+    layers_nbands = 1
+    shape = [layers_nbands, geogrid.length, geogrid.width]
+
+    local_incidence_angle_raster = _create_raster_obj(
+        output_dir,
+        product_id,
+        LAYER_NAME_LOCAL_INCIDENCE_ANGLE,
+        gdal.GDT_Float32,
+        shape,
+        radar_grid_file_dict,
+        output_obj_list,
+        save_local_inc_angle,
+        extension,
+    )
+    incidence_angle_raster = _create_raster_obj(
+        output_dir,
+        product_id,
+        LAYER_NAME_INCIDENCE_ANGLE,
+        gdal.GDT_Float32,
+        shape,
+        radar_grid_file_dict,
+        output_obj_list,
+        save_incidence_angle,
+        extension,
+    )
+    projection_angle_raster = _create_raster_obj(
+        output_dir,
+        product_id,
+        LAYER_NAME_PROJECTION_ANGLE,
+        gdal.GDT_Float32,
+        shape,
+        radar_grid_file_dict,
+        output_obj_list,
+        save_projection_angle,
+        extension,
+    )
+    rtc_anf_projection_angle_raster = _create_raster_obj(
+        output_dir,
+        product_id,
+        LAYER_NAME_RTC_ANF_PROJECTION_ANGLE,
+        gdal.GDT_Float32,
+        shape,
+        radar_grid_file_dict,
+        output_obj_list,
+        save_rtc_anf_projection_angle,
+        extension,
+    )
+    range_slope_raster = _create_raster_obj(
+        output_dir,
+        product_id,
+        LAYER_NAME_RANGE_SLOPE,
+        gdal.GDT_Float32,
+        shape,
+        radar_grid_file_dict,
+        output_obj_list,
+        save_range_slope,
+        extension,
+    )
+    interpolated_dem_raster = _create_raster_obj(
+        output_dir,
+        product_id,
+        LAYER_NAME_DEM,
+        gdal.GDT_Float32,
+        shape,
+        radar_grid_file_dict,
+        output_obj_list,
+        save_dem,
+        extension,
+    )
+
+    # TODO review this (Doppler)!!!
+    # native_doppler = burst.doppler.lut2d
+    native_doppler = isce3.core.LUT2d()
+    native_doppler.bounds_error = False
+    grid_doppler = isce3.core.LUT2d()
+    grid_doppler.bounds_error = False
+
+    # TODO: update code below
+    # Computation of range slope is not merged to ISCE yet
+    kwargs_get_radar_grid = {}
+    if range_slope_raster:
+        kwargs_get_radar_grid['range_slope_angle_raster'] = range_slope_raster
+
+    # call get_radar_grid()
+    isce3.geogrid.get_radar_grid(
+        lookside,
+        wavelength,
+        dem_raster,
+        geogrid,
+        orbit,
+        native_doppler,
+        grid_doppler,
+        incidence_angle_raster=incidence_angle_raster,
+        local_incidence_angle_raster=local_incidence_angle_raster,
+        projection_angle_raster=projection_angle_raster,
+        simulated_radar_brightness_raster=rtc_anf_projection_angle_raster,
+        interpolated_dem_raster=interpolated_dem_raster,
+        dem_interp_method=dem_interp_method_enum,
+        **kwargs_get_radar_grid,
+    )
+
+    # Flush data
+    for obj in output_obj_list:
+        del obj
+
+    if not verbose:
+        return
+
+
 def run_single_job(cfg: RunConfig):
     """
     Run geocode burst workflow with user-defined
@@ -944,11 +1071,6 @@ def run_single_job(cfg: RunConfig):
     output_imagery_compression = cfg.groups.product_group.output_imagery_compression
     output_imagery_nbits = cfg.groups.product_group.output_imagery_nbits
 
-    browse_image_burst_height = cfg.groups.processing.browse_image_group.browse_image_burst_height
-    browse_image_burst_width = cfg.groups.processing.browse_image_group.browse_image_burst_width
-    browse_image_mosaic_height = cfg.groups.processing.browse_image_group.browse_image_mosaic_height
-    browse_image_mosaic_width = cfg.groups.processing.browse_image_group.browse_image_mosaic_width
-
     save_imagery_as_hdf5 = output_imagery_format == 'HDF5' or output_imagery_format == 'NETCDF'
     save_secondary_layers_as_hdf5 = cfg.groups.product_group.save_secondary_layers_as_hdf5
 
@@ -959,15 +1081,8 @@ def run_single_job(cfg: RunConfig):
     else:
         hdf5_file_extension = 'h5'
 
-    if save_imagery_as_hdf5 or output_imagery_format == 'COG':
-        output_raster_format = 'GTiff'
-    else:
-        output_raster_format = output_imagery_format
-
-    if output_raster_format == 'GTiff':
-        imagery_extension = 'tif'
-    else:
-        imagery_extension = 'bin'
+    output_raster_format = 'GTiff'
+    imagery_extension = 'tif'
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
@@ -1018,8 +1133,7 @@ def run_single_job(cfg: RunConfig):
     # unpack RTC run parameters
     rtc_namespace = cfg.groups.processing.rtc
 
-    # only 2 RTC algorithms supported: area_projection (default) &
-    # bilinear_distribution
+    # only 2 RTC algorithms supported: area_projection (default) & bilinear_distribution
     if rtc_namespace.algorithm_type == 'bilinear_distribution':
         rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_BILINEAR_DISTRIBUTION
     else:
@@ -1053,69 +1167,7 @@ def run_single_job(cfg: RunConfig):
         err_msg = 'ERROR invalid area beta mode:' f' {rtc_area_beta_mode}'
         raise ValueError(err_msg)
 
-    logger.info('Identification:')
-    logger.info(f'    product type: {product_type}')
-    logger.info(f'    product version: {product_version}')
-    if save_mosaics:
-        logger.info(f'    mosaic product ID: {mosaic_product_id}')
-    logger.info('Ancillary input(s):')
-    logger.info(f'    DEM file: {cfg.dem}')
-    logger.info('Processing parameters:')
-    logger.info(f'    apply RTC: {flag_apply_rtc}')
-    logger.info(f'    apply thermal noise correction:' f' {flag_apply_thermal_noise_correction}')
-    logger.info(f'    apply absolute radiometric correction:' f' {flag_apply_abs_rad_correction}')
-    logger.info(f'    apply valid samples sub-swath masking:' f' {apply_valid_samples_sub_swath_masking}')
-    logger.info(f'    apply shadow masking:' f' {apply_shadow_masking}')
-    logger.info(f'    apply bistatic delay correction:' f' {apply_bistatic_delay_correction}')
-    logger.info(f'    apply static tropospheric delay correction:' f' {apply_static_tropospheric_delay_correction}')
-    logger.info(f'    skip if already processed:' f' {skip_if_output_files_exist}')
-    logger.info(f'    scratch dir: {scratch_path}')
-    logger.info(f'    output dir: {output_dir}')
-    logger.info(f'    save bursts: {save_bursts}')
-    logger.info(f'    save mosaics: {save_mosaics}')
-    logger.info(f'    save browse: {flag_save_browse}')
-    logger.info(f'    output imagery format: {output_imagery_format}')
-    logger.info(f'    output imagery compression:' f' {output_imagery_compression}')
-    logger.info(f'    output imagery nbits: {output_imagery_nbits}')
-    logger.info(f'    save secondary layers as HDF5 files:' f' {save_secondary_layers_as_hdf5}')
-    logger.info(f'    check ancillary coverage:' f' {check_ancillary_inputs_coverage}')
-
-    logger.info('Save layers:')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_LAYOVER_SHADOW_MASK]}:' f' {save_rtc_anf}')
-    logger.info(f'    RTC area normalization factor: {save_rtc_anf}')
-    logger.info(f'    RTC area normalization factor Gamma0 to Beta0:' f' {save_rtc_anf_gamma0_to_sigma0}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_NUMBER_OF_LOOKS]}:' f' {save_nlooks}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_INCIDENCE_ANGLE]}:' f' {save_incidence_angle}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_LOCAL_INCIDENCE_ANGLE]}:' f' {save_local_inc_angle}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_PROJECTION_ANGLE]}:' f' {save_projection_angle}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_RTC_ANF_PROJECTION_ANGLE]}:' f' {save_rtc_anf_projection_angle}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_RANGE_SLOPE]}:' f' {save_range_slope}')
-    logger.info(f'    {layer_names_dict[LAYER_NAME_DEM]}:' f' {save_dem}')
-
-    logger.info('Browse images:')
-    logger.info(f'    burst height: {browse_image_burst_height}')
-    logger.info(f'    burst width: {browse_image_burst_width}')
-
-    if save_mosaics:
-        logger.info(f'    mosaic height: {browse_image_mosaic_height}')
-        logger.info(f'    mosaic width: {browse_image_mosaic_width}')
-        logger.info('Mosaic geogrid:')
-        for line in str(cfg.geogrid).split('\n'):
-            if not line:
-                continue
-            logger.info(f'    {line}')
-
-    if product_type == STATIC_LAYERS_PRODUCT_TYPE and flag_save_browse and not save_local_inc_angle:
-        error_msg = (
-            'ERROR the browse image for the RTC-S1-STATIC'
-            ' product (static layers) can only be generated'
-            ' if the flag `save_local_inc_angle` is enabled.'
-            ' Please, update your runconfig file.'
-        )
-        raise ValueError(error_msg)
-
     # check ancillary input (DEM)
-    # Forrest stope
     metadata_dict = {}
     check_ancillary_inputs(check_ancillary_inputs_coverage, cfg.dem, cfg.geogrid, metadata_dict, logger=logger)
 
@@ -1194,7 +1246,6 @@ def run_single_job(cfg: RunConfig):
     lookside = None
     wavelength = None
     orbit = None
-    mosaic_geotiff_metadata_dict = None
 
     # iterate over sub-burts
     for burst_index, (burst_id, burst_pol_dict) in enumerate(cfg.bursts.items()):
@@ -1722,14 +1773,7 @@ def run_single_job(cfg: RunConfig):
             hdf5_mosaic_obj = create_hdf5_file(
                 mosaic_product_id, output_hdf5_file, orbit, burst, cfg, processing_datetime, is_mosaic=True
             )
-
-        # Save mosaic metadata for later use
-        if save_mosaics and burst_index == 0:
-            mosaic_metadata_dict = get_metadata_dict(mosaic_product_id, burst, cfg, processing_datetime, is_mosaic=True)
-            mosaic_geotiff_metadata_dict = all_metadata_dict_to_geotiff_metadata_dict(mosaic_metadata_dict)
-
         output_file_list += burst_output_file_list
-
         t_burst_end = time.time()
         logger.info(f'elapsed time (burst): {t_burst_end - t_burst_start}')
 
@@ -1832,85 +1876,6 @@ def run_single_job(cfg: RunConfig):
                 output_file_list.append(output_file)
                 mosaic_output_file_list.append(output_file)
 
-        # Save browse image (mosaic) using RTC-S1 imagery
-        if flag_save_browse and product_type != STATIC_LAYERS_PRODUCT_TYPE:
-            browse_image_filename = os.path.join(output_dir, f'{mosaic_product_id}.png')
-            output_file_list.append(browse_image_filename)
-            mosaic_output_file_list.append(browse_image_filename)
-
-        # Save HDF5
-        if save_hdf5_metadata:
-            if save_nlooks:
-                nlooks_mosaic_file = output_metadata_dict[LAYER_NAME_NUMBER_OF_LOOKS][0]
-            else:
-                nlooks_mosaic_file = None
-            if save_rtc_anf:
-                rtc_anf_mosaic_file = output_metadata_dict[layer_name_rtc_anf][0]
-            else:
-                rtc_anf_mosaic_file = None
-            if save_rtc_anf_gamma0_to_sigma0:
-                rtc_anf_gamma0_to_sigma0_mosaic_file = output_metadata_dict[LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0][0]
-            else:
-                rtc_anf_gamma0_to_sigma0_mosaic_file = None
-            if save_mask:
-                layover_shadow_mask_file = output_metadata_dict[LAYER_NAME_LAYOVER_SHADOW_MASK][0]
-            else:
-                layover_shadow_mask_file = None
-
-            # Update metadata datasets that depend on all bursts
-            sensing_start = None
-            sensing_stop = None
-            for burst_id, burst_pol_dict in cfg.bursts.items():
-                pols = list(burst_pol_dict.keys())
-                burst = burst_pol_dict[pols[0]]
-
-                if sensing_start is None or burst.sensing_start < sensing_start:
-                    sensing_start = burst.sensing_start
-
-                if sensing_stop is None or burst.sensing_stop > sensing_stop:
-                    sensing_stop = burst.sensing_stop
-
-            sensing_start_ds = '/identification/zeroDopplerStartTime'
-            sensing_end_ds = '/identification/zeroDopplerEndTime'
-            if sensing_start_ds in hdf5_mosaic_obj:
-                del hdf5_mosaic_obj[sensing_start_ds]
-            if sensing_end_ds in hdf5_mosaic_obj:
-                del hdf5_mosaic_obj[sensing_end_ds]
-            hdf5_mosaic_obj[sensing_start_ds] = sensing_start.strftime('%Y-%m-%dT%H:%M:%S.%f')
-            hdf5_mosaic_obj[sensing_end_ds] = sensing_stop.strftime('%Y-%m-%dT%H:%M:%S.%f')
-
-            # Bundle the mosaicked single-pol rasters
-            geo_filename_vrt = f'{geo_filename}.vrt'
-            gdal.BuildVRT(geo_filename_vrt, output_imagery_filename_list, options=vrt_options_mosaic)
-            temp_files_list.append(geo_filename_vrt)
-
-            save_hdf5_file(
-                hdf5_mosaic_obj,
-                output_hdf5_file,
-                clip_max,
-                clip_min,
-                output_radiometry_str,
-                cfg.geogrid,
-                pol_list,
-                geo_filename_vrt,
-                nlooks_mosaic_file,
-                rtc_anf_mosaic_file,
-                layer_name_rtc_anf,
-                rtc_anf_gamma0_to_sigma0_mosaic_file,
-                layover_shadow_mask_file,
-                radar_grid_file_dict,
-                save_imagery=save_imagery_as_hdf5,
-                save_secondary_layers=save_secondary_layers_as_hdf5,
-            )
-            hdf5_mosaic_obj.close()
-            output_file_list.append(output_hdf5_file)
-
-        # Append metadata to mosaic GeoTIFFs
-        for current_file in mosaic_output_file_list:
-            if not current_file.endswith('.tif'):
-                continue
-            append_metadata_to_geotiff_file(current_file, mosaic_geotiff_metadata_dict, mosaic_product_id)
-
     # Save GeoTIFFs as cloud optimized GeoTIFFs (COGs)
     if output_imagery_format == 'COG':
         logger.info('Saving files as Cloud-Optimized GeoTIFFs (COGs)')
@@ -1937,149 +1902,10 @@ def run_single_job(cfg: RunConfig):
                 **options_save_as_cog,
             )
 
-    logger.info('removing temporary files:')
     for filename in temp_files_list:
         if not os.path.isfile(filename):
             continue
         os.remove(filename)
 
-        logger.info(f'    {filename}')
-
-    logger.info('output files:')
-    for filename in output_file_list:
-        logger.info(f'    {filename}')
-
     t_end = time.time()
     logger.info(f'elapsed time: {t_end - t_start}')
-
-    # Return value to indicate that the processing has completed succesfully
-    return 0
-
-
-def get_radar_grid(
-    geogrid,
-    dem_interp_method_enum,
-    product_id,
-    output_dir,
-    extension,
-    save_local_inc_angle,
-    save_incidence_angle,
-    save_projection_angle,
-    save_rtc_anf_projection_angle,
-    save_range_slope,
-    save_dem,
-    dem_raster,
-    radar_grid_file_dict,
-    lookside,
-    wavelength,
-    orbit,
-    verbose=True,
-):
-    output_obj_list = []
-    layers_nbands = 1
-    shape = [layers_nbands, geogrid.length, geogrid.width]
-
-    local_incidence_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_LOCAL_INCIDENCE_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_local_inc_angle,
-        extension,
-    )
-    incidence_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_INCIDENCE_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_incidence_angle,
-        extension,
-    )
-    projection_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_PROJECTION_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_projection_angle,
-        extension,
-    )
-    rtc_anf_projection_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_RTC_ANF_PROJECTION_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_rtc_anf_projection_angle,
-        extension,
-    )
-    range_slope_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_RANGE_SLOPE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_range_slope,
-        extension,
-    )
-    interpolated_dem_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_DEM,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_dem,
-        extension,
-    )
-
-    # TODO review this (Doppler)!!!
-    # native_doppler = burst.doppler.lut2d
-    native_doppler = isce3.core.LUT2d()
-    native_doppler.bounds_error = False
-    grid_doppler = isce3.core.LUT2d()
-    grid_doppler.bounds_error = False
-
-    # TODO: update code below
-    # Computation of range slope is not merged to ISCE yet
-    kwargs_get_radar_grid = {}
-    if range_slope_raster:
-        kwargs_get_radar_grid['range_slope_angle_raster'] = range_slope_raster
-
-    # call get_radar_grid()
-    isce3.geogrid.get_radar_grid(
-        lookside,
-        wavelength,
-        dem_raster,
-        geogrid,
-        orbit,
-        native_doppler,
-        grid_doppler,
-        incidence_angle_raster=incidence_angle_raster,
-        local_incidence_angle_raster=local_incidence_angle_raster,
-        projection_angle_raster=projection_angle_raster,
-        simulated_radar_brightness_raster=rtc_anf_projection_angle_raster,
-        interpolated_dem_raster=interpolated_dem_raster,
-        dem_interp_method=dem_interp_method_enum,
-        **kwargs_get_radar_grid,
-    )
-
-    # Flush data
-    for obj in output_obj_list:
-        del obj
-
-    if not verbose:
-        return
