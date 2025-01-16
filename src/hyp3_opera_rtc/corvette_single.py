@@ -919,7 +919,7 @@ class RtcOptions:
     save_metadata: bool = True
 
 
-def run_single_job(cfg: RunConfig, opts: RtcOptions):
+def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     """
     Run geocode burst workflow with user-defined
     args stored in dictionary runconfig `cfg`
@@ -1000,17 +1000,14 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     os.makedirs(opts.scratch_dir, exist_ok=True)
     vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
 
-    n_bursts = len(cfg.bursts.items())
-    logger.info(f'Number of bursts to process: {n_bursts}')
-
     lookside = None
     wavelength = None
     orbit = None
 
     # iterate over sub-burts
-    for burst_index, (burst_id, burst_pol_dict) in enumerate(cfg.bursts.items()):
+    for burst_id, burst_pol_dict in cfg.bursts.items():
+        burst_id = str(burst.burst_id)
         t_burst_start = time.time()
-        logger.info(f'Processing burst: {burst_id} ({burst_index+1}/' f'{n_bursts})')
 
         burst_output_file_list = []
 
@@ -1018,7 +1015,6 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         pol_list = list(burst_pol_dict.keys())
         burst = burst_pol_dict[pol_list[0]]
         burst_product_id = 'burst1'
-        # flag_bursts_files_are_temporary = False
 
         burst_scratch_path = f'{opts.scratch_dir}/{burst_id}/'
         os.makedirs(burst_scratch_path, exist_ok=True)

@@ -114,7 +114,7 @@ def opera_rtc(
     cfg = RunConfig.load_from_yaml(runconfig_burst_list[0])
     load_parameters(cfg)
     opts = RtcOptions(output_dir=str(output_dir), scratch_dir=str(scratch_dir))
-    run_single_job(cfg, opts)
+    run_single_job(cfg.bursts['t115_245714_iw1']['VV'], cfg, opts)
 
 
 def main():
