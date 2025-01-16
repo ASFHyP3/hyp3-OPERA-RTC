@@ -966,6 +966,8 @@ def get_radar_grid(
 
 @dataclass
 class RtcOptions:
+    output_dir: str
+    scratch_dir: str
     rtc: bool = True
     thermal_noise: bool = True
     abs_rad: bool = True
@@ -984,32 +986,19 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         RunConfig object with user runconfig options
     """
     t_start = time.time()
-    time_stamp = str(float(time.time()))
+    raster_format = 'GTiff'
+    raster_extension = 'tif'
 
     # unpack processing parameters
     processing_namespace = cfg.groups.processing
     dem_interp_method_enum = processing_namespace.dem_interpolation_method_enum
 
-    # get mosaic_product_id
-    burst_id = next(iter(cfg.bursts))
-    burst_pol_dict = cfg.bursts[burst_id]
-    pol_list = list(burst_pol_dict.keys())
-
-    scratch_path = os.path.join(cfg.groups.product_group.scratch_path, f'temp_{time_stamp}')
-    output_dir = cfg.groups.product_group.output_dir
-
-    # populate processing parameters
     save_bursts = cfg.groups.product_group.save_bursts
-    # save_mosaics = cfg.groups.product_group.save_mosaics
     output_imagery_format = cfg.groups.product_group.output_imagery_format
     save_imagery_as_hdf5 = output_imagery_format == 'HDF5' or output_imagery_format == 'NETCDF'
     save_secondary_layers_as_hdf5 = cfg.groups.product_group.save_secondary_layers_as_hdf5
 
     save_hdf5_metadata = cfg.groups.product_group.save_metadata or save_imagery_as_hdf5 or save_secondary_layers_as_hdf5
-
-    hdf5_file_extension = 'h5'
-    output_raster_format = 'GTiff'
-    imagery_extension = 'tif'
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
@@ -1099,8 +1088,8 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     output_file_list = []
     temp_files_list = []
 
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(scratch_path, exist_ok=True)
+    os.makedirs(opts.output_dir, exist_ok=True)
+    os.makedirs(opts.scratch_dir, exist_ok=True)
     vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
 
     n_bursts = len(cfg.bursts.items())
@@ -1125,10 +1114,10 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         flag_bursts_files_are_temporary = not save_bursts or save_imagery_as_hdf5
         flag_bursts_secondary_files_are_temporary = not save_bursts or save_secondary_layers_as_hdf5
 
-        burst_scratch_path = f'{scratch_path}/{burst_id}/'
+        burst_scratch_path = f'{opts.scratch_dir}/{burst_id}/'
         os.makedirs(burst_scratch_path, exist_ok=True)
 
-        output_dir_bursts = os.path.join(output_dir, burst_id)
+        output_dir_bursts = os.path.join(opts.output_dir, burst_id)
         os.makedirs(output_dir_bursts, exist_ok=True)
 
         if not save_bursts or save_secondary_layers_as_hdf5:
@@ -1152,17 +1141,15 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
         # Create burst HDF5
         if save_hdf5_metadata and save_bursts:
-            hdf5_file_output_dir = os.path.join(output_dir, burst_id)
+            hdf5_file_output_dir = os.path.join(opts.output_dir, burst_id)
             os.makedirs(hdf5_file_output_dir, exist_ok=True)
-            output_hdf5_file_burst = os.path.join(hdf5_file_output_dir, f'{burst_product_id}.{hdf5_file_extension}')
+            output_hdf5_file_burst = os.path.join(hdf5_file_output_dir, f'{burst_product_id}.h5')
 
         # If burst imagery is not temporary, separate polarization channels
         output_burst_imagery_list = []
         if not flag_bursts_files_are_temporary:
             for pol in pol_list:
-                geo_burst_pol_filename = os.path.join(
-                    output_dir_bursts, f'{burst_product_id}_{pol}.' + f'{imagery_extension}'
-                )
+                geo_burst_pol_filename = os.path.join(output_dir_bursts, f'{burst_product_id}_{pol}.{raster_extension}')
                 output_burst_imagery_list.append(geo_burst_pol_filename)
 
         else:
@@ -1180,7 +1167,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         input_file_list = []
         for pol, burst_pol in burst_pol_dict.items():
             temp_slc_path = os.path.join(burst_scratch_path, f'slc_{pol}.vrt')
-            temp_slc_corrected_path = os.path.join(burst_scratch_path, f'slc_{pol}_corrected.{imagery_extension}')
+            temp_slc_corrected_path = os.path.join(burst_scratch_path, f'slc_{pol}_corrected.{raster_extension}')
             if opts.thermal_noise or opts.abs_rad:
                 apply_slc_corrections(
                     burst_pol,
@@ -1199,13 +1186,13 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             input_file_list.append(input_burst_filename)
 
         # At this point, burst imagery files are always temporary
-        geo_burst_filename = f'{burst_scratch_path}/{burst_product_id}.{imagery_extension}'
+        geo_burst_filename = f'{burst_scratch_path}/{burst_product_id}.{raster_extension}'
         temp_files_list.append(geo_burst_filename)
 
         out_geo_nlooks_obj = None
         if save_nlooks:
             nlooks_file = (
-                f'{output_dir_sec_bursts}/{burst_product_id}' f'_{LAYER_NAME_NUMBER_OF_LOOKS}.{imagery_extension}'
+                f'{output_dir_sec_bursts}/{burst_product_id}' f'_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
             )
 
             if flag_bursts_secondary_files_are_temporary:
@@ -1217,7 +1204,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
         out_geo_rtc_obj = None
         if save_rtc_anf:
-            rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}' f'_{layer_name_rtc_anf}.{imagery_extension}'
+            rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}' f'_{layer_name_rtc_anf}.{raster_extension}'
 
             if flag_bursts_secondary_files_are_temporary:
                 temp_files_list.append(rtc_anf_file)
@@ -1231,7 +1218,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         if save_rtc_anf_gamma0_to_sigma0:
             rtc_anf_gamma0_to_sigma0_file = (
                 f'{output_dir_sec_bursts}/{burst_product_id}'
-                f'_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{imagery_extension}'
+                f'_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
             )
 
             if flag_bursts_secondary_files_are_temporary:
@@ -1295,13 +1282,13 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             if flag_layover_shadow_mask_is_temporary:
                 # layover/shadow mask is temporary
                 layover_shadow_mask_file = (
-                    f'{burst_scratch_path}/{burst_product_id}' f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{imagery_extension}'
+                    f'{burst_scratch_path}/{burst_product_id}' f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
                 )
             else:
                 # layover/shadow mask is saved in `output_dir_sec_bursts`
                 layover_shadow_mask_file = (
                     f'{output_dir_sec_bursts}/{burst_product_id}'
-                    f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{imagery_extension}'
+                    f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
                 )
             logger.info('    computing layover shadow mask for' f' {burst_id}')
             radar_grid_layover_shadow_mask = radar_grid
@@ -1312,7 +1299,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
                 burst,
                 dem_raster,
                 layover_shadow_mask_file,
-                output_raster_format,
+                raster_format,
                 burst_scratch_path,
                 shadow_dilation_size=shadow_dilation_size,
                 threshold_rdr2geo=cfg.rdr2geo_params.threshold,
@@ -1343,12 +1330,12 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
         if save_nlooks:
             out_geo_nlooks_obj = isce3.io.Raster(
-                nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, output_raster_format
+                nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
             )
 
         if save_rtc_anf:
             out_geo_rtc_obj = isce3.io.Raster(
-                rtc_anf_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, output_raster_format
+                rtc_anf_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
             )
 
         if save_rtc_anf_gamma0_to_sigma0:
@@ -1358,7 +1345,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
                 geogrid.length,
                 1,
                 gdal.GDT_Float32,
-                output_raster_format,
+                raster_format,
             )
             geocode_kwargs['out_geo_rtc_gamma0_to_sigma0'] = out_geo_rtc_gamma0_to_sigma0_obj
 
@@ -1378,7 +1365,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             geogrid.length,
             rdr_burst_raster.num_bands,
             gdal.GDT_Float32,
-            output_raster_format,
+            raster_format,
         )
 
         # init Geocode object depending on raster type
@@ -1452,7 +1439,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
         # If burst imagery is not temporary, separate polarization channels
         if not flag_bursts_files_are_temporary:
-            _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, output_raster_format, logger)
+            _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
 
             burst_output_file_list += output_burst_imagery_list
 
@@ -1485,7 +1472,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
                 dem_interp_method_enum,
                 burst_product_id,
                 output_dir_sec_bursts,
-                imagery_extension,
+                raster_extension,
                 save_local_inc_angle,
                 save_incidence_angle,
                 save_projection_angle,

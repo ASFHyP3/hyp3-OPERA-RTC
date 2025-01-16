@@ -2,6 +2,7 @@ import argparse
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
+import secrets
 
 from jinja2 import Template
 
@@ -70,7 +71,7 @@ def opera_rtc(
     if work_dir is None:
         work_dir = Path.cwd()
 
-    scratch_dir = work_dir / 'scratch'
+    scratch_dir = work_dir / 'scratch' / secrets.token_hex(2)
     input_dir = work_dir / 'input'
     output_dir = work_dir / 'output'
     [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
@@ -112,7 +113,8 @@ def opera_rtc(
     # Run burst RTC
     cfg = RunConfig.load_from_yaml(runconfig_burst_list[0])
     load_parameters(cfg)
-    run_single_job(cfg, RtcOptions())
+    opts = RtcOptions(output_dir=str(output_dir), scratch_dir=str(scratch_dir))
+    run_single_job(cfg, opts)
 
 
 def main():
