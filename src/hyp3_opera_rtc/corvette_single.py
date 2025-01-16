@@ -15,20 +15,11 @@ from scipy import ndimage
 logger = logging.getLogger('rtc_s1')
 
 STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR = 3
-
 STATIC_LAYERS_AZ_MARGIN = 1.2
 STATIC_LAYERS_RG_MARGIN = 0.2
 
-# from h5_prep.py
-STATIC_LAYERS_PRODUCT_TYPE = 'RTC_S1_STATIC'
-DATA_BASE_GROUP = '/data'
-LAYER_NAME_VV = 'VV'
-LAYER_NAME_VH = 'VH'
 LAYER_NAME_LAYOVER_SHADOW_MASK = 'mask'
-LAYER_NAME_RTC_ANF_GAMMA0_TO_BETA0 = 'rtc_anf_gamma0_to_beta0'
 LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0 = 'rtc_anf_gamma0_to_sigma0'
-LAYER_NAME_RTC_ANF_SIGMA0_TO_BETA0 = 'rtc_anf_sigma0_to_beta0'
-LAYER_NAME_RTC_ANF_BETA0_TO_BETA0 = 'rtc_anf_beta0_to_beta0'
 LAYER_NAME_NUMBER_OF_LOOKS = 'number_of_looks'
 LAYER_NAME_INCIDENCE_ANGLE = 'incidence_angle'
 LAYER_NAME_LOCAL_INCIDENCE_ANGLE = 'local_incidence_angle'
@@ -964,7 +955,6 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
     flag_upsample_radar_grid = geocode_namespace.upsample_radargrid
     save_nlooks = geocode_namespace.save_nlooks
     save_mask = geocode_namespace.save_mask
-    flag_call_radar_grid = True
 
     # unpack RTC run parameters
     rtc_namespace = cfg.groups.processing.rtc
@@ -1028,8 +1018,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         pol_list = list(burst_pol_dict.keys())
         burst = burst_pol_dict[pol_list[0]]
         burst_product_id = 'burst1'
-        flag_bursts_files_are_temporary = False
-        flag_bursts_secondary_files_are_temporary = False
+        # flag_bursts_files_are_temporary = False
 
         burst_scratch_path = f'{opts.scratch_dir}/{burst_id}/'
         os.makedirs(burst_scratch_path, exist_ok=True)
@@ -1054,19 +1043,12 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
         if opts.save_metadata:
             hdf5_file_output_dir = os.path.join(opts.output_dir, burst_id)
             os.makedirs(hdf5_file_output_dir, exist_ok=True)
-            output_hdf5_file_burst = os.path.join(hdf5_file_output_dir, f'{burst_product_id}.h5')
 
         # If burst imagery is not temporary, separate polarization channels
         output_burst_imagery_list = []
-        if not flag_bursts_files_are_temporary:
-            for pol in pol_list:
-                geo_burst_pol_filename = os.path.join(output_dir_bursts, f'{burst_product_id}_{pol}.{raster_extension}')
-                output_burst_imagery_list.append(geo_burst_pol_filename)
-
-        else:
-            for pol in pol_list:
-                geo_burst_pol_filename = f'NETCDF:{output_hdf5_file_burst}:' f'{DATA_BASE_GROUP}/' f'{pol}'
-                output_burst_imagery_list.append(geo_burst_pol_filename)
+        for pol in pol_list:
+            geo_burst_pol_filename = os.path.join(output_dir_bursts, f'{burst_product_id}_{pol}.{raster_extension}')
+            output_burst_imagery_list.append(geo_burst_pol_filename)
 
         logger.info('    reading burst SLCs')
 
@@ -1105,23 +1087,14 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             nlooks_file = (
                 f'{output_dir_sec_bursts}/{burst_product_id}' f'_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
             )
-
-            if flag_bursts_secondary_files_are_temporary:
-                tmp_files_list.append(nlooks_file)
-            else:
-                burst_output_file_list.append(nlooks_file)
+            burst_output_file_list.append(nlooks_file)
         else:
             nlooks_file = None
 
         out_geo_rtc_obj = None
         if save_rtc_anf:
             rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}' f'_{layer_name_rtc_anf}.{raster_extension}'
-
-            if flag_bursts_secondary_files_are_temporary:
-                tmp_files_list.append(rtc_anf_file)
-            else:
-                burst_output_file_list.append(rtc_anf_file)
-
+            burst_output_file_list.append(rtc_anf_file)
         else:
             rtc_anf_file = None
 
@@ -1131,12 +1104,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
                 f'{output_dir_sec_bursts}/{burst_product_id}'
                 f'_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
             )
-
-            if flag_bursts_secondary_files_are_temporary:
-                tmp_files_list.append(rtc_anf_gamma0_to_sigma0_file)
-            else:
-                burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
-
+            burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
         else:
             rtc_anf_gamma0_to_sigma0_file = None
 
@@ -1186,10 +1154,7 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
 
         # Calculate layover/shadow mask when requested
         if save_mask or apply_shadow_masking:
-            flag_layover_shadow_mask_is_temporary = flag_bursts_secondary_files_are_temporary or (
-                apply_shadow_masking and not save_mask
-            )
-
+            flag_layover_shadow_mask_is_temporary = apply_shadow_masking and not save_mask
             if flag_layover_shadow_mask_is_temporary:
                 # layover/shadow mask is temporary
                 layover_shadow_mask_file = (
@@ -1349,62 +1314,43 @@ def run_single_job(cfg: RunConfig, opts: RtcOptions):
             set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
         # If burst imagery is not temporary, separate polarization channels
-        if not flag_bursts_files_are_temporary:
-            _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
-
-            burst_output_file_list += output_burst_imagery_list
+        _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
+        burst_output_file_list += output_burst_imagery_list
 
         if save_nlooks:
             out_geo_nlooks_obj.close_dataset()
             del out_geo_nlooks_obj
 
-            if not flag_bursts_secondary_files_are_temporary:
-                logger.info(f'file saved: {nlooks_file}')
-
         if save_rtc_anf:
             out_geo_rtc_obj.close_dataset()
             del out_geo_rtc_obj
-
-            if not flag_bursts_secondary_files_are_temporary:
-                logger.info(f'file saved: {rtc_anf_file}')
 
         if save_rtc_anf_gamma0_to_sigma0:
             out_geo_rtc_gamma0_to_sigma0_obj.close_dataset()
             del out_geo_rtc_gamma0_to_sigma0_obj
 
-            if not flag_bursts_secondary_files_are_temporary:
-                logger.info(f'file saved: {rtc_anf_gamma0_to_sigma0_file}')
-
         radar_grid_file_dict = {}
-
-        if flag_call_radar_grid:
-            get_radar_grid(
-                geogrid,
-                dem_interp_method_enum,
-                burst_product_id,
-                output_dir_sec_bursts,
-                raster_extension,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                dem_raster,
-                radar_grid_file_dict,
-                lookside,
-                wavelength,
-                orbit,
-                verbose=not flag_bursts_secondary_files_are_temporary,
-            )
-
-            radar_grid_file_dict_filenames = list(radar_grid_file_dict.values())
-
-            if flag_bursts_secondary_files_are_temporary:
-                # files are temporary
-                tmp_files_list += radar_grid_file_dict_filenames
-            else:
-                burst_output_file_list += radar_grid_file_dict_filenames
+        get_radar_grid(
+            geogrid,
+            dem_interp_method_enum,
+            burst_product_id,
+            output_dir_sec_bursts,
+            raster_extension,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            dem_raster,
+            radar_grid_file_dict,
+            lookside,
+            wavelength,
+            orbit,
+            verbose=False,
+        )
+        radar_grid_file_dict_filenames = list(radar_grid_file_dict.values())
+        burst_output_file_list += radar_grid_file_dict_filenames
 
         t_burst_end = time.time()
         logger.info(f'elapsed time (burst): {t_burst_end - t_burst_start}')
