@@ -2,15 +2,12 @@
 RTC-S1 Science Application Software (single job)
 """
 
-import argparse
 import logging
 import os
-import tempfile
 import time
 from datetime import datetime
 
 import isce3
-import matplotlib.image as mpimg
 import numpy as np
 import yaml
 from osgeo import gdal
@@ -32,7 +29,6 @@ from rtc.h5_prep import (
     create_hdf5_file,
     get_metadata_dict,
     get_product_version,
-    layer_description_dict,
     layer_names_dict,
     save_hdf5_file,
 )
@@ -387,299 +383,6 @@ def compute_correction_lut(
     return rg_lut, az_lut
 
 
-def _normalize_browse_image_band(band_image):
-    """Helper function to normalize a browse image band
-
-    Parameters
-    ----------
-    band_image : np.ndarray
-        Input image to be normalized
-
-    Returns
-    -------
-    band_image : np.ndarray
-        Normalized image
-
-    """
-    vmin = np.nanpercentile(band_image, BROWSE_IMAGE_MIN_PERCENTILE)
-    vmax = np.nanpercentile(band_image, BROWSE_IMAGE_MAX_PERCENTILE)
-    logger.info(f'        min ({BROWSE_IMAGE_MIN_PERCENTILE}% percentile):' f' {vmin}')
-    logger.info(f'        max ({BROWSE_IMAGE_MAX_PERCENTILE}% percentile):' f' {vmax}')
-
-    # gamma correction: 0.5
-    is_not_negative = band_image - vmin >= 0
-    is_negative = band_image - vmin < 0
-    band_image[is_not_negative] = np.sqrt((band_image[is_not_negative] - vmin) / (vmax - vmin))
-    band_image[is_negative] = 0
-    band_image = np.clip(band_image, 0, 1)
-    return band_image
-
-
-def save_browse_imagery(
-    imagery_list,
-    browse_image_filename,
-    pol_list,
-    browse_image_height,
-    browse_image_width,
-    temp_files_list,
-    scratch_dir,
-    logger,
-):
-    """Create and save a browse image for the RTC-S1 product
-
-    Parameters
-    ----------
-    imagery_list : list(str)
-        List of imagery files (one file for each polarization channel)
-    browse_image_filename : str
-        Output browse file
-    pol_list : list(str)
-        List of polarization channels
-    browse_image_height : int
-        Browse image height
-    browse_image_width : int
-        Browse image width
-    scratch_dir : str
-        Directory for temporary files
-    temp_files_list: list (optional)
-        Mutable list of temporary files. If provided,
-        paths to the temporary files generated will be
-        appended to this list.
-    logger : loggin.Logger
-        Logger
-    """
-
-    logger.info(f'creating browse image: {browse_image_filename}')
-
-    n_images = len(imagery_list)
-
-    if n_images == 1:
-        expected_pol_order = pol_list
-    elif n_images == 2 and 'HH' in pol_list:
-        expected_pol_order = ['HH', 'HV']
-    elif n_images == 2:
-        expected_pol_order = ['VV', 'VH']
-    elif n_images == 3 or n_images == 4:
-        expected_pol_order = ['HH', 'HV', 'VV']
-    else:
-        raise ValueError(
-            'Unexpected number of images in the imagery' f' list {n_images} for generating browse' 'images'
-        )
-
-    alpha_channel = None
-    band_list = [None] * n_images
-
-    for filename, pol in zip(imagery_list, pol_list):
-        logger.info(f'    pol: {pol}')
-        gdal_ds = gdal.Open(filename, gdal.GA_ReadOnly)
-        image_width = gdal_ds.GetRasterBand(1).XSize
-        image_height = gdal_ds.GetRasterBand(1).YSize
-
-        if browse_image_height is not None or browse_image_width is not None:
-            del gdal_ds
-
-            if browse_image_width is None:
-                browse_image_width = int(np.round((browse_image_height * float(image_width) / image_height)))
-
-            if browse_image_height is None:
-                browse_image_height = int(np.round((browse_image_width * float(image_height) / image_width)))
-
-            logger.info(f'        browse length: {browse_image_height}')
-            logger.info(f'        browse width: {browse_image_width}')
-
-            browse_temp_file = tempfile.NamedTemporaryFile(dir=scratch_dir, suffix='.tif').name
-
-            if temp_files_list is not None:
-                temp_files_list.append(browse_temp_file)
-
-            resamp_algorithm = 'AVERAGE'
-
-            # Translate the existing geotiff to the .png format
-            gdal.Translate(
-                browse_temp_file,
-                filename,
-                # outputSRS="+proj=longlat +ellps=WGS84",
-                # format='PNG',
-                height=browse_image_height,
-                width=browse_image_width,
-                resampleAlg=resamp_algorithm,
-            )
-
-            gdal_ds = gdal.Open(browse_temp_file, gdal.GA_ReadOnly)
-
-        gdal_band = gdal_ds.GetRasterBand(1)
-        band_image = np.asarray(gdal_band.ReadAsArray(), dtype=np.float32)
-
-        band_list_index = expected_pol_order.index(pol)
-
-        if n_images == 2 and not FLAG_BROWSE_DUAL_POL_REPEAT_COPOL and band_list_index == 0:
-            co_pol_image = band_image.copy()
-        if n_images == 2 and not FLAG_BROWSE_DUAL_POL_REPEAT_COPOL and band_list_index == 1:
-            cross_pol_image = band_image.copy()
-
-        is_valid = np.isfinite(band_image)
-        if alpha_channel is None:
-            alpha_channel = np.asarray(is_valid, dtype=np.float32)
-
-        band_list[band_list_index] = _normalize_browse_image_band(band_image)
-
-    if n_images == 1:
-        image = np.dstack((band_list[0], band_list[0], band_list[0], alpha_channel))
-    elif n_images == 2 and FLAG_BROWSE_DUAL_POL_REPEAT_COPOL:
-        image = np.dstack((band_list[0], band_list[1], band_list[0], alpha_channel))
-    elif n_images == 2:
-        logger.info(f'    pol ratio: {expected_pol_order[0]}/' f'{expected_pol_order[1]}')
-        blue_channel = _normalize_browse_image_band(co_pol_image / cross_pol_image)
-        image = np.dstack((band_list[0], band_list[1], blue_channel, alpha_channel))
-    else:
-        image = np.dstack((band_list[0], band_list[1], band_list[2], alpha_channel))
-    mpimg.imsave(browse_image_filename, image, format='png')
-    logger.info(f'file saved: {browse_image_filename}')
-
-
-def save_browse_static(
-    filename, browse_image_filename, browse_image_height, browse_image_width, temp_files_list, scratch_dir, logger
-):
-    """Create and save a browse image for the RTC-S1-STATIC product
-
-    Parameters
-    ----------
-    filename : str
-        Static layer filename
-    browse_image_filename : str
-        Output browse file
-    browse_image_height : int
-        Browse image height
-    browse_image_width : int
-        Browse image width
-    scratch_dir : str
-        Directory for temporary files
-    temp_files_list: list (optional)
-        Mutable list of temporary files. If provided,
-        paths to the temporary files generated will be
-        appended to this list.
-    logger : loggin.Logger
-        Logger
-    """
-
-    logger.info(f'creating browse image: {browse_image_filename}')
-    logger.info(f'            from file: {filename}')
-
-    gdal_ds = gdal.Open(filename, gdal.GA_ReadOnly)
-    image_width = gdal_ds.GetRasterBand(1).XSize
-    image_height = gdal_ds.GetRasterBand(1).YSize
-
-    if browse_image_height is not None or browse_image_width is not None:
-        del gdal_ds
-
-        if browse_image_width is None:
-            browse_image_width = int(np.round((browse_image_height * float(image_width) / image_height)))
-
-        if browse_image_height is None:
-            browse_image_height = int(np.round((browse_image_width * float(image_height) / image_width)))
-
-        logger.info(f'        browse length: {browse_image_height}')
-        logger.info(f'        browse width: {browse_image_width}')
-
-        browse_temp_file = tempfile.NamedTemporaryFile(dir=scratch_dir, suffix='.tif').name
-
-        if temp_files_list is not None:
-            temp_files_list.append(browse_temp_file)
-
-        resamp_algorithm = 'CUBIC'
-
-        # Translate the existing geotiff to the .png format
-        gdal.Translate(
-            browse_temp_file,
-            filename,
-            # outputSRS="+proj=longlat +ellps=WGS84",
-            # format='PNG',
-            height=browse_image_height,
-            width=browse_image_width,
-            resampleAlg=resamp_algorithm,
-        )
-
-        gdal_ds = gdal.Open(browse_temp_file, gdal.GA_ReadOnly)
-
-    gdal_band = gdal_ds.GetRasterBand(1)
-    band_image = np.asarray(gdal_band.ReadAsArray(), dtype=np.float32)
-    is_valid = np.isfinite(band_image)
-    alpha_channel = np.asarray(is_valid, dtype=np.float32)
-    vmin = np.nanpercentile(band_image, BROWSE_IMAGE_MIN_PERCENTILE)
-    vmax = np.nanpercentile(band_image, BROWSE_IMAGE_MAX_PERCENTILE)
-    logger.info(f'        min ({BROWSE_IMAGE_MIN_PERCENTILE}% percentile):' f' {vmin}')
-    logger.info(f'        max ({BROWSE_IMAGE_MAX_PERCENTILE}% percentile):' f' {vmax}')
-
-    band_image = (band_image - vmin) / (vmax - vmin)
-    band_image = np.clip(band_image, 0, 1)
-
-    image = np.dstack((band_image, band_image, band_image, alpha_channel))
-
-    mpimg.imsave(browse_image_filename, image, format='png')
-    logger.info(f'file saved: {browse_image_filename}')
-
-
-def append_metadata_to_geotiff_file(input_file, metadata_dict, product_id):
-    """Append metadata to GeoTIFF file
-
-    Parameters
-    ----------
-    input_file : str
-        Input GeoTIFF file
-    metadata_dict : dict
-        Metadata dictionary
-    product_id : str
-        Product ID
-    """
-    input_file_basename = os.path.basename(input_file)
-    logger.info('    appending metadata to the GeoTIFF file:' f' {input_file_basename}')
-    gdal_ds = gdal.Open(input_file, gdal.GA_Update)
-    existing_metadata = gdal_ds.GetMetadata()
-
-    # Update existing metadata with RTC-S1 metadata
-    existing_metadata.update(metadata_dict)
-    layer_id = input_file_basename.replace(f'{product_id}_', '').split('.')[0]
-
-    # Update metadata file name
-    # Note: commenting this line because the OPERA SDS may rename the output files
-    # making this field inconsistent
-    # existing_metadata['FILENAME'] = input_file_basename
-
-    # Update metadata layer name (short description)
-    if layer_id in layer_names_dict.keys():
-        layer_name = layer_names_dict[layer_id]
-        existing_metadata['LAYER_NAME'] = layer_name
-
-        # Save layer name using SetDescription()
-        gdal_ds.SetDescription(layer_name)
-
-        band_out = gdal_ds.GetRasterBand(1)
-        band_out.SetDescription(layer_name)
-        band_out.FlushCache()
-
-        del band_out
-
-    # Update metadata layer description (long description)
-    if layer_id in layer_description_dict.keys():
-        layer_description = layer_description_dict[layer_id]
-        existing_metadata['LAYER_DESCRIPTION'] = layer_description
-
-    # Write metadata
-    gdal_ds.SetMetadata(existing_metadata)
-
-    # Check NoDataValue
-    for band in range(gdal_ds.RasterCount):
-        band_ds = gdal_ds.GetRasterBand(band + 1)
-        dtype = band_ds.DataType
-        dtype_name = gdal.GetDataTypeName(dtype)
-        if 'float' in dtype_name.lower() and band_ds.GetNoDataValue() is None:
-            band_ds.SetNoDataValue(np.nan)
-        del band_ds
-
-    # Close GDAL dataset
-    del gdal_ds
-
-
 def _separate_pol_channels(multi_band_file, output_file_list, output_raster_format, logger):
     """Save a multi-band raster file as individual single-band files
 
@@ -866,7 +569,7 @@ def _test_valid_gdal_ref(gdal_ref):
     """
     try:
         gdal_ds = gdal.Open(gdal_ref, gdal.GA_ReadOnly)
-    except:
+    except:  # noqa
         return False
     return gdal_ds is not None
 
@@ -1974,15 +1677,6 @@ def run_single_job(cfg: RunConfig):
             # Save browse image (burst) using static layers
             if flag_save_browse and product_type == STATIC_LAYERS_PRODUCT_TYPE:
                 browse_image_filename = os.path.join(output_dir_bursts, f'{burst_product_id}.png')
-                save_browse_static(
-                    radar_grid_file_dict_filenames[0],
-                    browse_image_filename,
-                    browse_image_burst_height,
-                    browse_image_burst_width,
-                    temp_files_list,
-                    burst_scratch_path,
-                    logger,
-                )
                 burst_output_file_list.append(browse_image_filename)
 
         # Create burst HDF5
@@ -2014,26 +1708,14 @@ def run_single_job(cfg: RunConfig):
         # Save browse image (burst)
         if flag_process and flag_save_browse and product_type != STATIC_LAYERS_PRODUCT_TYPE:
             browse_image_filename = os.path.join(output_dir_bursts, f'{burst_product_id}.png')
-            save_browse_imagery(
-                output_burst_imagery_list,
-                browse_image_filename,
-                pol_list,
-                browse_image_burst_height,
-                browse_image_burst_width,
-                temp_files_list,
-                burst_scratch_path,
-                logger,
-            )
             burst_output_file_list.append(browse_image_filename)
 
         # Append metadata to burst GeoTIFFs
         if flag_process and (not flag_bursts_files_are_temporary or save_secondary_layers_as_hdf5):
             metadata_dict = get_metadata_dict(burst_product_id, burst, cfg, processing_datetime, is_mosaic=False)
-            geotiff_metadata_dict = all_metadata_dict_to_geotiff_metadata_dict(metadata_dict)
             for current_file in burst_output_file_list:
                 if not current_file.endswith('.tif'):
                     continue
-                append_metadata_to_geotiff_file(current_file, geotiff_metadata_dict, burst_product_id)
 
         # Create mosaic HDF5
         if save_hdf5_metadata and save_mosaics and burst_index == 0:
@@ -2091,15 +1773,6 @@ def run_single_job(cfg: RunConfig):
         # Save browse image (mosaic) using static layers
         if flag_save_browse and product_type == STATIC_LAYERS_PRODUCT_TYPE:
             browse_image_filename = os.path.join(output_dir, f'{mosaic_product_id}.png')
-            save_browse_static(
-                radar_grid_file_dict_filenames[0],
-                browse_image_filename,
-                browse_image_mosaic_height,
-                browse_image_mosaic_width,
-                temp_files_list,
-                scratch_path,
-                logger,
-            )
             output_file_list.append(browse_image_filename)
             mosaic_output_file_list.append(browse_image_filename)
 
@@ -2162,16 +1835,6 @@ def run_single_job(cfg: RunConfig):
         # Save browse image (mosaic) using RTC-S1 imagery
         if flag_save_browse and product_type != STATIC_LAYERS_PRODUCT_TYPE:
             browse_image_filename = os.path.join(output_dir, f'{mosaic_product_id}.png')
-            save_browse_imagery(
-                output_imagery_filename_list,
-                browse_image_filename,
-                pol_list,
-                browse_image_mosaic_height,
-                browse_image_mosaic_width,
-                temp_files_list,
-                scratch_path,
-                logger,
-            )
             output_file_list.append(browse_image_filename)
             mosaic_output_file_list.append(browse_image_filename)
 
@@ -2420,21 +2083,3 @@ def get_radar_grid(
 
     if not verbose:
         return
-
-
-def get_rtc_s1_parser():
-    """Initialize YamlArgparse class and parse CLI arguments for OPERA RTC."""
-    parser = argparse.ArgumentParser(description='', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('run_config_path', type=str, nargs='?', default=None, help='Path to run config file')
-
-    parser.add_argument('--log', '--log-file', dest='log_file', type=str, help='Log file')
-
-    parser.add_argument(
-        '--full-log-format',
-        dest='full_log_formatting',
-        action='store_true',
-        default=False,
-        help='Enable full formatting of log messages',
-    )
-
-    return parser
