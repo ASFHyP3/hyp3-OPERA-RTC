@@ -92,37 +92,27 @@ def opera_rtc(
         'bursts': burst_subset,
         'resolution': resolution,
     }
-    pge_present = False
-    try:
-        from opera.scripts.pge_main import pge_start
+    from rtc.core import create_logger
+    from rtc.runconfig import RunConfig, load_parameters
 
-        pge_present = True
-        config_args['config_type'] = 'pge'
-        render_runconfig(**config_args)
-        pge_start(str(config_path.resolve()))
-    except ImportError:
-        print('OPERA PGE script is not present, using OPERA SAS library.')
+    from hyp3_opera_rtc.corvette_single import run_single_job, split_runconfig
 
-    rtc_present = False
-    try:
-        from rtc.core import create_logger
-        from rtc.rtc_s1 import run_parallel
-        from rtc.runconfig import RunConfig, load_parameters
+    # Load from run_parallel
+    config_args['config_type'] = 'sas'
+    config_args['container_base_path'] = input_dir.parent
+    render_runconfig(**config_args)
+    log_path = str((output_dir / 'rtc.log').resolve())
+    create_logger(log_path, full_log_formatting=False)
+    cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
+    load_parameters(cfg)
 
-        rtc_present = True
-        config_args['config_type'] = 'sas'
-        config_args['container_base_path'] = input_dir.parent
-        render_runconfig(**config_args)
-        log_path = str((output_dir / 'rtc.log').resolve())
-        create_logger(log_path, full_log_formatting=False)
-        cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
-        load_parameters(cfg)
-        run_parallel(cfg, logfile_path=log_path, flag_logger_full_format=False)
-    except ImportError:
-        pass
+    # Spilt into burst configs
+    runconfig_burst_list, _ = split_runconfig(cfg, str(output_dir), ['abcd'], str(scratch_dir), str(log_path))
 
-    if not pge_present and not rtc_present:
-        raise ImportError('Neither the OPERA RTC PGE or SAS modules could be imported.')
+    # Run burst RTC
+    cfg = RunConfig.load_from_yaml(runconfig_burst_list[0])
+    load_parameters(cfg)
+    run_single_job(cfg)
 
 
 def main():
