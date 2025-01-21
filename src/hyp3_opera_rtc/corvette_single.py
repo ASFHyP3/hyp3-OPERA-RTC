@@ -824,6 +824,7 @@ def get_radar_grid(
 class RtcOptions:
     output_dir: str
     scratch_dir: str
+    dem_path: str
     rtc: bool = True
     thermal_noise: bool = True
     abs_rad: bool = True
@@ -853,6 +854,8 @@ class RtcOptions:
     rtc_min_value_db: int = -30.0
     rtc_upsampling: int = 2
     rtc_area_beta_mode: str = 'auto'
+    geo2rdr_threshold: float = 1.0e-7
+    geo2rdr_numiter: int = 50
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -933,11 +936,9 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         raise ValueError(err_msg)
 
     # Common initializations
-    dem_raster = isce3.io.Raster(cfg.dem)
+    dem_raster = isce3.io.Raster(opts.dem_path)
     ellipsoid = isce3.core.Ellipsoid()
     zero_doppler = isce3.core.LUT2d()
-    threshold = cfg.geo2rdr_params.threshold
-    maxiter = cfg.geo2rdr_params.numiter
     exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
 
     tmp_files_list = []
@@ -1194,8 +1195,8 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     geo_obj.orbit = orbit
     geo_obj.ellipsoid = ellipsoid
     geo_obj.doppler = zero_doppler
-    geo_obj.threshold_geo2rdr = threshold
-    geo_obj.numiter_geo2rdr = maxiter
+    geo_obj.threshold_geo2rdr = opts.geo2rdr_threshold
+    geo_obj.numiter_geo2rdr = opts.geo2rdr_numiter
 
     # set data interpolator based on the geocode algorithm
     if geocode_algorithm == isce3.geocode.GeocodeOutputMode.INTERP:
