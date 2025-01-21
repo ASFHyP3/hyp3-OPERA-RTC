@@ -908,6 +908,9 @@ class RtcOptions:
     upsample_radar_grid: bool = False
     save_nlooks: bool = False
     save_mask: bool = True
+    save_rtc_anf: bool = False
+    save_rtc_anf_gamma0_to_sigma0: bool = False
+    output_type: str = 'sigma0'
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -942,8 +945,21 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     else:
         raise ValueError(f'ERROR invalid memory mode: {opts.memory_mode}')
 
-    # unpack geocode run parameters
-    geocode_namespace = cfg.groups.processing.geocoding
+    if not opts.rtc:
+        if opts.save_rtc_anf:
+            raise ValueError('RTC ANF flags are only available with RTC enabled')
+        if opts.save_rtc_anf_gamma0_to_sigma0:
+            raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with RTC enabled')
+
+    if opts.output_type == 'sigma0' and opts.save_rtc_anf_gamma0_to_sigma0:
+        raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with output type set to gamma0')
+
+    # if opts.output_type == 'sigma0':
+    #     output_type = isce3.geometry.RtcOutputTerrainRadiometry.SIGMA_NAUGHT
+    # elif opts.output_type == 'gamma0':
+    #     output_type = isce3.geometry.RtcOutputTerrainRadiometry.GAMMA_NAUGHT  # noqa
+    # else:
+    #     raise ValueError(f'ERROR invalid output type: {opts.output_type}')
 
     # unpack RTC run parameters
     rtc_namespace = cfg.groups.processing.rtc
@@ -960,9 +976,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     else:
         layer_name_rtc_anf = ''
 
-    save_rtc_anf, save_rtc_anf_gamma0_to_sigma0 = read_and_validate_rtc_anf_flags(
-        geocode_namespace, opts.rtc, output_terrain_radiometry_enum, logger
-    )
     rtc_min_value_db = rtc_namespace.rtc_min_value_db
     rtc_upsampling = rtc_namespace.dem_upsampling
     rtc_area_beta_mode = rtc_namespace.area_beta_mode
@@ -1073,14 +1086,14 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         nlooks_file = None
 
     out_geo_rtc_obj = None
-    if save_rtc_anf:
+    if opts.save_rtc_anf:
         rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}_{layer_name_rtc_anf}.{raster_extension}'
         burst_output_file_list.append(rtc_anf_file)
     else:
         rtc_anf_file = None
 
     out_geo_rtc_gamma0_to_sigma0_obj = None
-    if save_rtc_anf_gamma0_to_sigma0:
+    if opts.save_rtc_anf_gamma0_to_sigma0:
         rtc_anf_gamma0_to_sigma0_file = (
             f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
         )
@@ -1159,7 +1172,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             numiter_rdr2geo=cfg.rdr2geo_params.numiter,
             threshold_geo2rdr=cfg.geo2rdr_params.threshold,
             numiter_geo2rdr=cfg.geo2rdr_params.numiter,
-            memory_mode=geocode_namespace.memory_mode,
+            memory_mode=memory_mode,
             geocode_options=layover_shadow_mask_geocode_kwargs,
         )
 
@@ -1186,12 +1199,12 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
         )
 
-    if save_rtc_anf:
+    if opts.save_rtc_anf:
         out_geo_rtc_obj = isce3.io.Raster(
             rtc_anf_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
         )
 
-    if save_rtc_anf_gamma0_to_sigma0:
+    if opts.save_rtc_anf_gamma0_to_sigma0:
         out_geo_rtc_gamma0_to_sigma0_obj = isce3.io.Raster(
             rtc_anf_gamma0_to_sigma0_file,
             geogrid.width,
@@ -1297,11 +1310,11 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         out_geo_nlooks_obj.close_dataset()
         del out_geo_nlooks_obj
 
-    if save_rtc_anf:
+    if opts.save_rtc_anf:
         out_geo_rtc_obj.close_dataset()
         del out_geo_rtc_obj
 
-    if save_rtc_anf_gamma0_to_sigma0:
+    if opts.save_rtc_anf_gamma0_to_sigma0:
         out_geo_rtc_gamma0_to_sigma0_obj.close_dataset()
         del out_geo_rtc_gamma0_to_sigma0_obj
 
