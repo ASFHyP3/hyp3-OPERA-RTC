@@ -29,30 +29,6 @@ LAYER_NAME_RANGE_SLOPE = 'range_slope'
 LAYER_NAME_DEM = 'interpolated_dem'
 
 
-# from geogrid.py
-def snap_coord(val, snap, round_func):
-    """
-    Returns the snapped values of the input value
-
-    Parameters
-    -----------
-    val : float
-        Input value to snap
-    snap : float
-        Snapping step
-    round_func : function pointer
-        A function used to round `val` i.e. round, ceil, floor
-
-    Return:
-    --------
-    snapped_value : float
-        snapped value of `var` by `snap`
-
-    """
-    snapped_value = round_func(float(val) / snap) * snap
-    return snapped_value
-
-
 # from rtc_s1.py
 def set_dict_item_recursive(dict_in, list_path, val):
     """
@@ -872,6 +848,13 @@ class RtcOptions:
     bistatic_delay: bool = True
     static_tropo: bool = True
     save_metadata: bool = True
+    dem_interpolation_method: str = 'biquintic'
+    apply_valid_samples_sub_swath_masking: bool = True
+    apply_shadow_masking: bool = True
+    geocode_algorithm: str = 'area_projection'  # 'area_projection' or 'interp'
+    correction_lut_azimuth_spacing_in_meters: int = 120
+    correction_lut_range_spacing_in_meters: int = 120
+    memory_mode: str = 'single_block'
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -885,23 +868,29 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         RunConfig object with user runconfig options
     """
     t_start = time.time()
+
     raster_format = 'GTiff'
     raster_extension = 'tif'
 
-    # unpack processing parameters
-    dem_interp_method_enum = cfg.groups.processing.dem_interpolation_method_enum
+    if opts.dem_interpolation_method == 'biquintic':
+        dem_interp_method_enum = isce3.core.DataInterpMethod.BIQUINTIC
+    else:
+        raise ValueError(f'ERROR invalid dem interpolation method: {opts.dem_interpolation_method}')
+
+    if opts.geocode_algorithm == 'area_projection':
+        geocode_algorithm = isce3.geocode.GeocodeOutputMode.AREA_PROJECTION
+    elif opts.geocode_algorithm == 'interp':
+        geocode_algorithm = isce3.geocode.GeocodeOutputMode.INTERP
+    else:
+        raise ValueError(f'ERROR invalid geocode algorithm: {opts.geocode_algorithm_type}')
+
+    if opts.memory_mode == 'single_block':
+        memory_mode = isce3.core.GeocodeMemoryMode.SingleBlock
+    else:
+        raise ValueError(f'ERROR invalid memory mode: {opts.memory_mode}')
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
-    apply_valid_samples_sub_swath_masking = cfg.groups.processing.geocoding.apply_valid_samples_sub_swath_masking
-    apply_shadow_masking = cfg.groups.processing.geocoding.apply_shadow_masking
-    if cfg.groups.processing.geocoding.algorithm_type == 'area_projection':
-        geocode_algorithm = isce3.geocode.GeocodeOutputMode.AREA_PROJECTION
-    else:
-        geocode_algorithm = isce3.geocode.GeocodeOutputMode.INTERP
-    az_step_meters = cfg.groups.processing.correction_lut_azimuth_spacing_in_meters
-    rg_step_meters = cfg.groups.processing.correction_lut_range_spacing_in_meters
-    memory_mode = geocode_namespace.memory_mode
     geogrid_upsampling = geocode_namespace.geogrid_upsampling
     shadow_dilation_size = geocode_namespace.shadow_dilation_size
     abs_cal_factor = geocode_namespace.abs_rad_cal
@@ -986,8 +975,8 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     # snap coordinates
     x_snap = geogrid.spacing_x
     y_snap = geogrid.spacing_y
-    geogrid.start_x = snap_coord(geogrid.start_x, x_snap, np.floor)
-    geogrid.start_y = snap_coord(geogrid.start_y, y_snap, np.ceil)
+    geogrid.start_x = np.floor(float(geogrid.start_x) / x_snap) * x_snap
+    geogrid.start_y = np.ceil(float(geogrid.start_y) / y_snap) * y_snap
 
     # Create burst HDF5
     if opts.save_metadata:
@@ -1059,7 +1048,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     layover_shadow_mask_geocode_kwargs = {}
 
     # get sub_swaths metadata
-    if apply_valid_samples_sub_swath_masking:
+    if opts.apply_valid_samples_sub_swath_masking:
         # Extract burst boundaries and create sub_swaths object to mask
         # invalid radar samples
         n_subswaths = 1
@@ -1084,8 +1073,8 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             burst,
             dem_raster,
             burst_scratch_path,
-            rg_step_meters,
-            az_step_meters,
+            opts.correction_lut_range_spacing_in_meters,
+            opts.correction_lut_azimuth_spacing_in_meters,
             opts.bistatic_delay,
             opts.static_tropo,
         )
@@ -1097,8 +1086,8 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             geocode_kwargs['slant_range_correction'] = rg_lut
 
     # Calculate layover/shadow mask when requested
-    if save_mask or apply_shadow_masking:
-        flag_layover_shadow_mask_is_temporary = apply_shadow_masking and not save_mask
+    if save_mask or opts.apply_shadow_masking:
+        flag_layover_shadow_mask_is_temporary = opts.apply_shadow_masking and not save_mask
         if flag_layover_shadow_mask_is_temporary:
             # layover/shadow mask is temporary
             layover_shadow_mask_file = (
@@ -1142,7 +1131,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         # STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR. If that
         # number is not unitary, the layover shadow mask cannot be used
         # with geocoding
-        if apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
+        if opts.apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
             geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
     else:
         layover_shadow_mask_file = None
