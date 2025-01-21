@@ -905,6 +905,9 @@ class RtcOptions:
     abs_cal_factor: int = 1
     clip_min: float = np.nan
     clip_max: float = np.nan
+    upsample_radar_grid: bool = False
+    save_nlooks: bool = False
+    save_mask: bool = True
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -941,7 +944,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
-    flag_upsample_radar_grid = geocode_namespace.upsample_radargrid
+    # flag_upsample_radar_grid = geocode_namespace.upsample_radargrid
     save_nlooks = geocode_namespace.save_nlooks
     save_mask = geocode_namespace.save_mask
 
@@ -1270,7 +1273,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         rtc_upsampling=rtc_upsampling,
         rtc_algorithm=rtc_algorithm,
         abs_cal_factor=opts.abs_cal_factor,
-        flag_upsample_radar_grid=flag_upsample_radar_grid,
+        flag_upsample_radar_grid=opts.upsample_radar_grid,
         clip_min=opts.clip_min,
         clip_max=opts.clip_max,
         out_geo_nlooks=out_geo_nlooks_obj,
