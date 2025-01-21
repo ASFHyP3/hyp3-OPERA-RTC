@@ -856,6 +856,8 @@ class RtcOptions:
     rtc_area_beta_mode: str = 'auto'
     geo2rdr_threshold: float = 1.0e-7
     geo2rdr_numiter: int = 50
+    rdr2geo_threshold: float = 1.0e-7
+    rdr2geo_numiter: int = 25
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -1112,10 +1114,10 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             raster_format,
             burst_scratch_path,
             shadow_dilation_size=opts.shadow_dilation_size,
-            threshold_rdr2geo=cfg.rdr2geo_params.threshold,
-            numiter_rdr2geo=cfg.rdr2geo_params.numiter,
-            threshold_geo2rdr=cfg.geo2rdr_params.threshold,
-            numiter_geo2rdr=cfg.geo2rdr_params.numiter,
+            threshold_rdr2geo=opts.rdr2geo_threshold,
+            numiter_rdr2geo=opts.rdr2geo_numiter,
+            threshold_geo2rdr=opts.geo2rdr_threshold,
+            numiter_geo2rdr=opts.geo2rdr_numiter,
             memory_mode=memory_mode,
             geocode_options=layover_shadow_mask_geocode_kwargs,
         )
