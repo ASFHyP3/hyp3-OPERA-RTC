@@ -96,7 +96,8 @@ def opera_rtc(
     from rtc.core import create_logger
     from rtc.runconfig import RunConfig, load_parameters
 
-    from hyp3_opera_rtc.corvette_single import RtcOptions, run_single_job, split_runconfig
+    from hyp3_opera_rtc.corvette_opts import RtcOptions
+    from hyp3_opera_rtc.corvette_single import run_single_job, split_runconfig
 
     # Load from run_parallel
     config_args['config_type'] = 'sas'
