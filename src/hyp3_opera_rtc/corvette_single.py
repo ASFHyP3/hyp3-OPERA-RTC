@@ -29,6 +29,51 @@ LAYER_NAME_RANGE_SLOPE = 'range_slope'
 LAYER_NAME_DEM = 'interpolated_dem'
 
 
+def _separate_pol_channels(multi_band_file, output_file_list, output_raster_format, logger):
+    """Save a multi-band raster file as individual single-band files
+
+    Parameters
+    ----------
+    multi_band_file : str
+        Multi-band raster file
+    output_file_list : list(str)
+        Output file list
+    output_raster_format : str
+        Output raster format
+    logger : logging.Logger
+    """
+    gdal_ds = gdal.Open(multi_band_file, gdal.GA_ReadOnly)
+    projection = gdal_ds.GetProjectionRef()
+    geotransform = gdal_ds.GetGeoTransform()
+
+    num_bands = gdal_ds.RasterCount
+    if num_bands != len(output_file_list):
+        error_str = (
+            f'ERROR number of output files ({len(output_file_list)})'
+            f' does not match with the number'
+            f' of input bursts` bands ({num_bands})'
+        )
+        raise ValueError(error_str)
+
+    for b, output_file in enumerate(output_file_list):
+        gdal_band = gdal_ds.GetRasterBand(b + 1)
+        gdal_dtype = gdal_band.DataType
+        band_image = gdal_band.ReadAsArray()
+
+        # Save the corrected image
+        driver_out = gdal.GetDriverByName(output_raster_format)
+        raster_out = driver_out.Create(output_file, band_image.shape[1], band_image.shape[0], 1, gdal_dtype)
+
+        raster_out.SetProjection(projection)
+        raster_out.SetGeoTransform(geotransform)
+
+        band_out = raster_out.GetRasterBand(1)
+        band_out.WriteArray(band_image)
+        band_out.FlushCache()
+        del band_out
+        logger.info(f'file saved: {output_file}')
+
+
 # from rtc_s1.py
 def set_dict_item_recursive(dict_in, list_path, val):
     """
@@ -1245,6 +1290,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     if save_mask:
         set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
+    _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
     burst_output_file_list += output_burst_imagery_list
 
     if save_nlooks:
