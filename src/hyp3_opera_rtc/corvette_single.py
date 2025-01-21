@@ -297,51 +297,6 @@ def compute_correction_lut(
     return rg_lut, az_lut
 
 
-def _separate_pol_channels(multi_band_file, output_file_list, output_raster_format, logger):
-    """Save a multi-band raster file as individual single-band files
-
-    Parameters
-    ----------
-    multi_band_file : str
-        Multi-band raster file
-    output_file_list : list(str)
-        Output file list
-    output_raster_format : str
-        Output raster format
-    logger : logging.Logger
-    """
-    gdal_ds = gdal.Open(multi_band_file, gdal.GA_ReadOnly)
-    projection = gdal_ds.GetProjectionRef()
-    geotransform = gdal_ds.GetGeoTransform()
-
-    num_bands = gdal_ds.RasterCount
-    if num_bands != len(output_file_list):
-        error_str = (
-            f'ERROR number of output files ({len(output_file_list)})'
-            f' does not match with the number'
-            f' of input bursts` bands ({num_bands})'
-        )
-        raise ValueError(error_str)
-
-    for b, output_file in enumerate(output_file_list):
-        gdal_band = gdal_ds.GetRasterBand(b + 1)
-        gdal_dtype = gdal_band.DataType
-        band_image = gdal_band.ReadAsArray()
-
-        # Save the corrected image
-        driver_out = gdal.GetDriverByName(output_raster_format)
-        raster_out = driver_out.Create(output_file, band_image.shape[1], band_image.shape[0], 1, gdal_dtype)
-
-        raster_out.SetProjection(projection)
-        raster_out.SetGeoTransform(geotransform)
-
-        band_out = raster_out.GetRasterBand(1)
-        band_out.WriteArray(band_image)
-        band_out.FlushCache()
-        del band_out
-        logger.info(f'file saved: {output_file}')
-
-
 def _create_raster_obj(
     output_dir,
     product_id,
@@ -439,7 +394,7 @@ def apply_slc_corrections(
 
     # Apply absolute radiometric correction
     if flag_apply_abs_rad_correction:
-        logger.info('    applying absolute radiometric correction to burst' ' SLC')
+        logger.info('    applying absolute radiometric correction to burst SLC')
         corrected_image = corrected_image / burst_in.burst_calibration.beta_naught**2
 
     # Output as complex
@@ -494,7 +449,7 @@ def set_mask_fill_value_and_ctable(mask_file, reference_file):
         File to be used as reference for invalid samples
 
     """
-    logger.info('    updating layover/shadow mask with fill value and color' ' table')
+    logger.info('    updating layover/shadow mask with fill value and color table')
     ref_gdal_ds = gdal.Open(reference_file, gdal.GA_ReadOnly)
     ref_gdal_band = ref_gdal_ds.GetRasterBand(1)
     ref_array = ref_gdal_band.ReadAsArray()
@@ -624,7 +579,7 @@ def compute_layover_shadow_mask(
             path_layover_shadow_mask_file, radar_grid.width, radar_grid.length, 1, gdal.GDT_Byte, 'GTiff'
         )
     else:
-        path_layover_shadow_mask = f'layover_shadow_mask_{burst_in.burst_id}_' f'{burst_in.polarization}_{str_datetime}'
+        path_layover_shadow_mask = f'layover_shadow_mask_{burst_in.burst_id}_{burst_in.polarization}_{str_datetime}'
         slantrange_layover_shadow_mask_raster = isce3.io.Raster(
             path_layover_shadow_mask, radar_grid.width, radar_grid.length, 1, gdal.GDT_Byte, 'MEM'
         )
@@ -967,7 +922,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     output_terrain_radiometry = rtc_namespace.output_type
     output_terrain_radiometry_enum = rtc_namespace.output_type_enum
     if opts.rtc:
-        layer_name_rtc_anf = f'rtc_anf_{output_terrain_radiometry}_to_' f'{input_terrain_radiometry}'
+        layer_name_rtc_anf = f'rtc_anf_{output_terrain_radiometry}_to_{input_terrain_radiometry}'
     else:
         layer_name_rtc_anf = ''
 
@@ -984,7 +939,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     elif rtc_area_beta_mode == 'auto' or rtc_area_beta_mode is None:
         rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.AUTO
     else:
-        err_msg = 'ERROR invalid area beta mode:' f' {rtc_area_beta_mode}'
+        err_msg = f'ERROR invalid area beta mode: {rtc_area_beta_mode}'
         raise ValueError(err_msg)
 
     # Common initializations
@@ -1078,16 +1033,14 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     out_geo_nlooks_obj = None
     if save_nlooks:
-        nlooks_file = (
-            f'{output_dir_sec_bursts}/{burst_product_id}' f'_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
-        )
+        nlooks_file = f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
         burst_output_file_list.append(nlooks_file)
     else:
         nlooks_file = None
 
     out_geo_rtc_obj = None
     if save_rtc_anf:
-        rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}' f'_{layer_name_rtc_anf}.{raster_extension}'
+        rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}_{layer_name_rtc_anf}.{raster_extension}'
         burst_output_file_list.append(rtc_anf_file)
     else:
         rtc_anf_file = None
@@ -1095,8 +1048,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     out_geo_rtc_gamma0_to_sigma0_obj = None
     if save_rtc_anf_gamma0_to_sigma0:
         rtc_anf_gamma0_to_sigma0_file = (
-            f'{output_dir_sec_bursts}/{burst_product_id}'
-            f'_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
+            f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
         )
         burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
     else:
@@ -1150,15 +1102,14 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         if flag_layover_shadow_mask_is_temporary:
             # layover/shadow mask is temporary
             layover_shadow_mask_file = (
-                f'{burst_scratch_path}/{burst_product_id}' f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
+                f'{burst_scratch_path}/{burst_product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
             )
         else:
             # layover/shadow mask is saved in `output_dir_sec_bursts`
             layover_shadow_mask_file = (
-                f'{output_dir_sec_bursts}/{burst_product_id}'
-                f'_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
+                f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
             )
-        logger.info('    computing layover shadow mask for' f' {burst_id}')
+        logger.info(f'    computing layover shadow mask for {burst_id}')
         radar_grid_layover_shadow_mask = radar_grid
         slantrange_layover_shadow_mask_raster = compute_layover_shadow_mask(
             radar_grid_layover_shadow_mask,
@@ -1305,8 +1256,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     if save_mask:
         set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
-    # If burst imagery is not temporary, separate polarization channels
-    _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
     burst_output_file_list += output_burst_imagery_list
 
     if save_nlooks:
