@@ -691,69 +691,6 @@ def compute_layover_shadow_mask(
     return slantrange_layover_shadow_mask_raster
 
 
-def read_and_validate_rtc_anf_flags(geocode_namespace, flag_apply_rtc, output_terrain_radiometry, logger):
-    """
-    Read and validate radiometric terrain correction (RTC) area
-    normalization factor (ANF) flags
-
-    Parameters
-    ----------
-    geocode_namespace: types.SimpleNamespace
-        Runconfig geocode namespace
-    flag_apply_rtc: Bool
-        Flag apply RTC (radiometric terrain correction)
-    output_terrain_radiometry: isce3.geometry.RtcOutputTerrainRadiometry
-        Output terrain radiometry (backscatter coefficient convention)
-    logger : loggin.Logger
-        Logger
-
-    Returns
-    -------
-    save_rtc_anf: bool
-        Flag indicating wheter the radiometric terrain correction (RTC)
-        area normalization factor (ANF) layer should be created
-    save_rtc_anf_gamma0_to_sigma0: bool
-        Flag indicating wheter the radiometric terrain correction (RTC)
-        area normalization factor (ANF) gamma0 to sigma0 layer should be
-        created
-    """
-    save_rtc_anf = geocode_namespace.save_rtc_anf
-    save_rtc_anf_gamma0_to_sigma0 = geocode_namespace.save_rtc_anf_gamma0_to_sigma0
-
-    if not flag_apply_rtc and save_rtc_anf:
-        logger.warning(
-            'WARNING the option `save_rtc_anf` is not available'
-            ' with radiometric terrain correction'
-            ' disabled (`apply_rtc = False`). Setting'
-            ' flag `save_rtc_anf` to `False`.'
-        )
-        save_rtc_anf = False
-
-    if not flag_apply_rtc and save_rtc_anf_gamma0_to_sigma0:
-        logger.warning = (
-            'WARNING the option `save_rtc_anf_gamma0_to_sigma0`'
-            ' is not available with radiometric terrain'
-            ' correction disabled (`apply_rtc = False`).'
-            ' Setting flag `save_rtc_anf_gamma0_to_sigma0` to'
-            ' `False`.'
-        )
-        save_rtc_anf_gamma0_to_sigma0 = False
-    elif (
-        save_rtc_anf_gamma0_to_sigma0
-        and output_terrain_radiometry == isce3.geometry.RtcOutputTerrainRadiometry.SIGMA_NAUGHT
-    ):
-        logger.warning = (
-            'WARNING the option `save_rtc_anf_gamma0_to_sigma0`'
-            ' is not available with output radiometric terrain'
-            ' radiometry (`output_type`) set to `sigma0`.'
-            ' Setting flag `save_rtc_anf_gamma0_to_sigma0` to'
-            ' `False`.'
-        )
-        save_rtc_anf_gamma0_to_sigma0 = False
-
-    return save_rtc_anf, save_rtc_anf_gamma0_to_sigma0
-
-
 def get_radar_grid(
     geogrid,
     dem_interp_method_enum,
@@ -910,7 +847,12 @@ class RtcOptions:
     save_mask: bool = True
     save_rtc_anf: bool = False
     save_rtc_anf_gamma0_to_sigma0: bool = False
-    output_type: str = 'sigma0'
+    terrain_radiometry: str = 'gamma0'  # 'gamma0' or 'sigma0'
+    rtc_algorithm_type: str = 'area_projection'  # 'area_projection' or 'bilinear_distribution'
+    input_terrain_radiometry: str = 'beta0'
+    rtc_min_value_db: int = -30.0
+    rtc_upsampling: int = 2
+    rtc_area_beta_mode: str = 'auto'
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -951,42 +893,43 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         if opts.save_rtc_anf_gamma0_to_sigma0:
             raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with RTC enabled')
 
-    if opts.output_type == 'sigma0' and opts.save_rtc_anf_gamma0_to_sigma0:
+    if opts.terrain_radiometry == 'sigma0' and opts.save_rtc_anf_gamma0_to_sigma0:
         raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with output type set to gamma0')
 
-    # if opts.output_type == 'sigma0':
-    #     output_type = isce3.geometry.RtcOutputTerrainRadiometry.SIGMA_NAUGHT
-    # elif opts.output_type == 'gamma0':
-    #     output_type = isce3.geometry.RtcOutputTerrainRadiometry.GAMMA_NAUGHT  # noqa
-    # else:
-    #     raise ValueError(f'ERROR invalid output type: {opts.output_type}')
-
-    # unpack RTC run parameters
-    rtc_namespace = cfg.groups.processing.rtc
-    if rtc_namespace.algorithm_type == 'bilinear_distribution':
+    if opts.rtc_algorithm_type == 'bilinear_distribution':
         rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_BILINEAR_DISTRIBUTION
-    else:
+    elif opts.rtc_algorithm_type == 'area_projection':
         rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_AREA_PROJECTION
-    input_terrain_radiometry = rtc_namespace.input_terrain_radiometry
-    input_terrain_radiometry_enum = rtc_namespace.input_terrain_radiometry_enum
-    output_terrain_radiometry = rtc_namespace.output_type
-    output_terrain_radiometry_enum = rtc_namespace.output_type_enum
+    else:
+        raise ValueError(f'ERROR invalid RTC algorithm: {opts.rtc_algorithm_type}')
+
+    if opts.input_terrain_radiometry == 'sigma0':
+        input_terrain_radiometry = isce3.geometry.RtcInputTerrainRadiometry.SIGMA_NAUGHT_ELLIPSOID
+    elif opts.input_terrain_radiometry == 'beta0':
+        input_terrain_radiometry = isce3.geometry.RtcInputTerrainRadiometry.BETA_NAUGHT
+    else:
+        raise ValueError(f'ERROR invalid input terrain radiometry: {opts.input_terrain_radiometry}')
+
+    if opts.terrain_radiometry == 'sigma0':
+        terrain_radiometry = isce3.geometry.RtcOutputTerrainRadiometry.SIGMA_NAUGHT
+    elif opts.terrain_radiometry == 'gamma0':
+        terrain_radiometry = isce3.geometry.RtcOutputTerrainRadiometry.GAMMA_NAUGHT
+    else:
+        raise ValueError(f'ERROR invalid output type: {opts.terrain_radiometry}')
+
     if opts.rtc:
-        layer_name_rtc_anf = f'rtc_anf_{output_terrain_radiometry}_to_{input_terrain_radiometry}'
+        layer_name_rtc_anf = f'rtc_anf_{opts.terrain_radiometry}_to_{opts.input_terrain_radiometry}'
     else:
         layer_name_rtc_anf = ''
 
-    rtc_min_value_db = rtc_namespace.rtc_min_value_db
-    rtc_upsampling = rtc_namespace.dem_upsampling
-    rtc_area_beta_mode = rtc_namespace.area_beta_mode
-    if rtc_area_beta_mode == 'pixel_area':
+    if opts.rtc_area_beta_mode == 'pixel_area':
         rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.PIXEL_AREA
-    elif rtc_area_beta_mode == 'projection_angle':
+    elif opts.rtc_area_beta_mode == 'projection_angle':
         rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.PROJECTION_ANGLE
-    elif rtc_area_beta_mode == 'auto' or rtc_area_beta_mode is None:
+    elif opts.rtc_area_beta_mode == 'auto' or opts.rtc_area_beta_mode is None:
         rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.AUTO
     else:
-        err_msg = f'ERROR invalid area beta mode: {rtc_area_beta_mode}'
+        err_msg = f'ERROR invalid area beta mode: {opts.rtc_area_beta_mode}'
         raise ValueError(err_msg)
 
     # Common initializations
@@ -1276,11 +1219,11 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         output_mode=geocode_algorithm,
         geogrid_upsampling=opts.geogrid_upsampling,
         flag_apply_rtc=opts.rtc,
-        input_terrain_radiometry=input_terrain_radiometry_enum,
-        output_terrain_radiometry=output_terrain_radiometry_enum,
+        input_terrain_radiometry=input_terrain_radiometry,
+        output_terrain_radiometry=terrain_radiometry,
         exponent=exponent,
-        rtc_min_value_db=rtc_min_value_db,
-        rtc_upsampling=rtc_upsampling,
+        rtc_min_value_db=opts.rtc_min_value_db,
+        rtc_upsampling=opts.rtc_upsampling,
         rtc_algorithm=rtc_algorithm,
         abs_cal_factor=opts.abs_cal_factor,
         flag_upsample_radar_grid=opts.upsample_radar_grid,
