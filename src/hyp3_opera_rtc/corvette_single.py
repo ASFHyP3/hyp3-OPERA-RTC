@@ -855,6 +855,11 @@ class RtcOptions:
     correction_lut_azimuth_spacing_in_meters: int = 120
     correction_lut_range_spacing_in_meters: int = 120
     memory_mode: str = 'single_block'
+    geogrid_upsampling: int = 1
+    shadow_dilation_size: int = 0
+    abs_cal_factor: int = 1
+    clip_min: float = np.nan
+    clip_max: float = np.nan
 
 
 def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
@@ -891,11 +896,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
-    geogrid_upsampling = geocode_namespace.geogrid_upsampling
-    shadow_dilation_size = geocode_namespace.shadow_dilation_size
-    abs_cal_factor = geocode_namespace.abs_rad_cal
-    clip_max = geocode_namespace.clip_max
-    clip_min = geocode_namespace.clip_min
     flag_upsample_radar_grid = geocode_namespace.upsample_radargrid
     save_nlooks = geocode_namespace.save_nlooks
     save_mask = geocode_namespace.save_mask
@@ -1109,7 +1109,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             layover_shadow_mask_file,
             raster_format,
             burst_scratch_path,
-            shadow_dilation_size=shadow_dilation_size,
+            shadow_dilation_size=opts.shadow_dilation_size,
             threshold_rdr2geo=cfg.rdr2geo_params.threshold,
             numiter_rdr2geo=cfg.rdr2geo_params.numiter,
             threshold_geo2rdr=cfg.geo2rdr_params.threshold,
@@ -1216,7 +1216,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         output_raster=geo_burst_raster,
         dem_raster=dem_raster,
         output_mode=geocode_algorithm,
-        geogrid_upsampling=geogrid_upsampling,
+        geogrid_upsampling=opts.geogrid_upsampling,
         flag_apply_rtc=opts.rtc,
         input_terrain_radiometry=input_terrain_radiometry_enum,
         output_terrain_radiometry=output_terrain_radiometry_enum,
@@ -1224,10 +1224,10 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         rtc_min_value_db=rtc_min_value_db,
         rtc_upsampling=rtc_upsampling,
         rtc_algorithm=rtc_algorithm,
-        abs_cal_factor=abs_cal_factor,
+        abs_cal_factor=opts.abs_cal_factor,
         flag_upsample_radar_grid=flag_upsample_radar_grid,
-        clip_min=clip_min,
-        clip_max=clip_max,
+        clip_min=opts.clip_min,
+        clip_max=opts.clip_max,
         out_geo_nlooks=out_geo_nlooks_obj,
         out_geo_rtc=out_geo_rtc_obj,
         rtc_area_beta_mode=rtc_area_beta_mode_enum,
