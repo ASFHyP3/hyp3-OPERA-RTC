@@ -944,7 +944,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
-    save_mask = geocode_namespace.save_mask
 
     # unpack RTC run parameters
     rtc_namespace = cfg.groups.processing.rtc
@@ -1132,8 +1131,8 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             geocode_kwargs['slant_range_correction'] = rg_lut
 
     # Calculate layover/shadow mask when requested
-    if save_mask or opts.apply_shadow_masking:
-        flag_layover_shadow_mask_is_temporary = opts.apply_shadow_masking and not save_mask
+    if opts.save_mask or opts.apply_shadow_masking:
+        flag_layover_shadow_mask_is_temporary = opts.apply_shadow_masking and not opts.save_mask
         if flag_layover_shadow_mask_is_temporary:
             # layover/shadow mask is temporary
             layover_shadow_mask_file = (
@@ -1170,7 +1169,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             burst_output_file_list.append(layover_shadow_mask_file)
             logger.info(f'file saved: {layover_shadow_mask_file}')
 
-        if not save_mask:
+        if not opts.save_mask:
             layover_shadow_mask_file = None
 
         # The radar grid for static layers is multilooked by a factor of
@@ -1288,7 +1287,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     del geo_burst_raster
 
     # Output imagery list contains multi-band files that will be used for mosaicking
-    if save_mask:
+    if opts.save_mask:
         set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
     _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
