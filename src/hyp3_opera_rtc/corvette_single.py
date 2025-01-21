@@ -836,68 +836,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     raster_format = 'GTiff'
     raster_extension = 'tif'
 
-    if opts.dem_interpolation_method == 'biquintic':
-        dem_interp_method = isce3.core.DataInterpMethod.BIQUINTIC
-    else:
-        raise ValueError(f'ERROR invalid dem interpolation method: {opts.dem_interpolation_method}')
-
-    if opts.geocode_algorithm == 'area_projection':
-        geocode_algorithm = isce3.geocode.GeocodeOutputMode.AREA_PROJECTION
-    elif opts.geocode_algorithm == 'interp':
-        geocode_algorithm = isce3.geocode.GeocodeOutputMode.INTERP
-    else:
-        raise ValueError(f'ERROR invalid geocode algorithm: {opts.geocode_algorithm_type}')
-
-    if opts.memory_mode == 'single_block':
-        memory_mode = isce3.core.GeocodeMemoryMode.SingleBlock
-    else:
-        raise ValueError(f'ERROR invalid memory mode: {opts.memory_mode}')
-
-    if not opts.rtc:
-        if opts.save_rtc_anf:
-            raise ValueError('RTC ANF flags are only available with RTC enabled')
-        if opts.save_rtc_anf_gamma0_to_sigma0:
-            raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with RTC enabled')
-
-    if opts.terrain_radiometry == 'sigma0' and opts.save_rtc_anf_gamma0_to_sigma0:
-        raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with output type set to gamma0')
-
-    if opts.rtc_algorithm_type == 'bilinear_distribution':
-        rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_BILINEAR_DISTRIBUTION
-    elif opts.rtc_algorithm_type == 'area_projection':
-        rtc_algorithm = isce3.geometry.RtcAlgorithm.RTC_AREA_PROJECTION
-    else:
-        raise ValueError(f'ERROR invalid RTC algorithm: {opts.rtc_algorithm_type}')
-
-    if opts.input_terrain_radiometry == 'sigma0':
-        input_terrain_radiometry = isce3.geometry.RtcInputTerrainRadiometry.SIGMA_NAUGHT_ELLIPSOID
-    elif opts.input_terrain_radiometry == 'beta0':
-        input_terrain_radiometry = isce3.geometry.RtcInputTerrainRadiometry.BETA_NAUGHT
-    else:
-        raise ValueError(f'ERROR invalid input terrain radiometry: {opts.input_terrain_radiometry}')
-
-    if opts.terrain_radiometry == 'sigma0':
-        terrain_radiometry = isce3.geometry.RtcOutputTerrainRadiometry.SIGMA_NAUGHT
-    elif opts.terrain_radiometry == 'gamma0':
-        terrain_radiometry = isce3.geometry.RtcOutputTerrainRadiometry.GAMMA_NAUGHT
-    else:
-        raise ValueError(f'ERROR invalid output type: {opts.terrain_radiometry}')
-
-    if opts.rtc:
-        layer_name_rtc_anf = f'rtc_anf_{opts.terrain_radiometry}_to_{opts.input_terrain_radiometry}'
-    else:
-        layer_name_rtc_anf = ''
-
-    if opts.rtc_area_beta_mode == 'pixel_area':
-        rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.PIXEL_AREA
-    elif opts.rtc_area_beta_mode == 'projection_angle':
-        rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.PROJECTION_ANGLE
-    elif opts.rtc_area_beta_mode == 'auto' or opts.rtc_area_beta_mode is None:
-        rtc_area_beta_mode_enum = isce3.geometry.RtcAreaBetaMode.AUTO
-    else:
-        err_msg = f'ERROR invalid area beta mode: {opts.rtc_area_beta_mode}'
-        raise ValueError(err_msg)
-
     # Common initializations
     dem_raster = isce3.io.Raster(opts.dem_path)
     ellipsoid = isce3.core.Ellipsoid()
@@ -994,7 +932,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     out_geo_rtc_obj = None
     if opts.save_rtc_anf:
-        rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}_{layer_name_rtc_anf}.{raster_extension}'
+        rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
         burst_output_file_list.append(rtc_anf_file)
     else:
         rtc_anf_file = None
@@ -1079,7 +1017,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
             numiter_rdr2geo=opts.rdr2geo_numiter,
             threshold_geo2rdr=opts.geo2rdr_threshold,
             numiter_geo2rdr=opts.geo2rdr_numiter,
-            memory_mode=memory_mode,
+            memory_mode=opts.memory_mode_isce3,
             geocode_options=layover_shadow_mask_geocode_kwargs,
         )
 
@@ -1162,8 +1100,8 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     geo_obj.numiter_geo2rdr = opts.geo2rdr_numiter
 
     # set data interpolator based on the geocode algorithm
-    if geocode_algorithm == isce3.geocode.GeocodeOutputMode.INTERP:
-        geo_obj.data_interpolator = geocode_algorithm
+    if opts.geocode_algorithm_isce3 == isce3.geocode.GeocodeOutputMode.INTERP:
+        geo_obj.data_interpolator = opts.geocode_algorithm_isce3
 
     geo_obj.geogrid(
         geogrid.start_x,
@@ -1180,27 +1118,27 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
         input_raster=rdr_burst_raster,
         output_raster=geo_burst_raster,
         dem_raster=dem_raster,
-        output_mode=geocode_algorithm,
+        output_mode=opts.geocode_algorithm_isce3,
         geogrid_upsampling=opts.geogrid_upsampling,
         flag_apply_rtc=opts.rtc,
-        input_terrain_radiometry=input_terrain_radiometry,
-        output_terrain_radiometry=terrain_radiometry,
+        input_terrain_radiometry=opts.input_terrain_radiometry_isce3,
+        output_terrain_radiometry=opts.terrain_radiometry_isce3,
         exponent=exponent,
         rtc_min_value_db=opts.rtc_min_value_db,
         rtc_upsampling=opts.rtc_upsampling,
-        rtc_algorithm=rtc_algorithm,
+        rtc_algorithm=opts.rtc_algorithm_isce3,
         abs_cal_factor=opts.abs_cal_factor,
         flag_upsample_radar_grid=opts.upsample_radar_grid,
         clip_min=opts.clip_min,
         clip_max=opts.clip_max,
         out_geo_nlooks=out_geo_nlooks_obj,
         out_geo_rtc=out_geo_rtc_obj,
-        rtc_area_beta_mode=rtc_area_beta_mode_enum,
+        rtc_area_beta_mode=opts.rtc_area_beta_mode_isce3,
         # out_geo_rtc_gamma0_to_sigma0=out_geo_rtc_gamma0_to_sigma0_obj,
         input_rtc=None,
         output_rtc=None,
-        dem_interp_method=dem_interp_method,
-        memory_mode=memory_mode,
+        dem_interp_method=opts.dem_interpolation_method_isce3,
+        memory_mode=opts.memory_mode_isce3,
         **geocode_kwargs,
     )
 
@@ -1228,7 +1166,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     radar_grid_file_dict = {}
     get_radar_grid(
         geogrid,
-        dem_interp_method,
+        opts.dem_interpolation_method_isce3,
         burst_product_id,
         output_dir_sec_bursts,
         raster_extension,
