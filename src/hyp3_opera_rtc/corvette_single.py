@@ -944,8 +944,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     # unpack geocode run parameters
     geocode_namespace = cfg.groups.processing.geocoding
-    # flag_upsample_radar_grid = geocode_namespace.upsample_radargrid
-    save_nlooks = geocode_namespace.save_nlooks
     save_mask = geocode_namespace.save_mask
 
     # unpack RTC run parameters
@@ -1069,7 +1067,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     tmp_files_list.append(geo_burst_filename)
 
     out_geo_nlooks_obj = None
-    if save_nlooks:
+    if opts.save_nlooks:
         nlooks_file = f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
         burst_output_file_list.append(nlooks_file)
     else:
@@ -1184,7 +1182,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     else:
         layover_shadow_mask_file = None
 
-    if save_nlooks:
+    if opts.save_nlooks:
         out_geo_nlooks_obj = isce3.io.Raster(
             nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
         )
@@ -1296,7 +1294,7 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
     _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
     burst_output_file_list += output_burst_imagery_list
 
-    if save_nlooks:
+    if opts.save_nlooks:
         out_geo_nlooks_obj.close_dataset()
         del out_geo_nlooks_obj
 
