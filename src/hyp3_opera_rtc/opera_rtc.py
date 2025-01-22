@@ -105,15 +105,15 @@ def opera_rtc(
     render_runconfig(**config_args)
 
     burst = s1reader.load_bursts(str(granule_path), str(orbit_path), 1, 'VV')[0]
-    burst_dict = {str(burst.burst_id):{burst.polarization: burst}}
+    burst_dict = {str(burst.burst_id): {burst.polarization: burst}}
+
+    opts = RtcOptions(dem_path=str(dem_path), output_dir=str(output_dir), scratch_dir=str(scratch_dir))
 
     cfg_dict = load_validate_yaml(config_path)
     groups_cfg = cfg_dict['runconfig']['groups']
     mosaic_dict = groups_cfg['processing']['mosaicking']
     geocoding_dict = groups_cfg['processing']['geocoding']
-    geogrid_all, geogrids = generate_geogrids(burst_dict, geocoding_dict, mosaic_dict)
-
-    opts = RtcOptions(dem_path=str(dem_path), output_dir=str(output_dir), scratch_dir=str(scratch_dir))
+    geogrid_all, geogrids = generate_geogrids(burst_dict, geocoding_dict, mosaic_dict, opts)
 
     run_single_job(burst, geogrids['t115_245714_iw1'], opts)
 

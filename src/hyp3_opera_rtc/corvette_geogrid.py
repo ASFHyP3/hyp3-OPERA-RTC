@@ -24,68 +24,22 @@ def get_point_epsg(lat, lon):
     epsg: int
         UTM zone, Polar stereographic (North / South)
     """
-
     # "Warp" longitude value into [-180.0, 180.0]
     if (lon >= 180.0) or (lon <= -180.0):
         lon = (lon + 180.0) % 360.0 - 180.0
 
     if lat >= 75.0:
-        return 3413
+        epsg = 3413
     elif lat <= -75.0:
-        return 3031
+        epsg = 3031
     elif lat > 0:
-        return 32601 + int(np.round((lon + 177) / 6.0))
+        epsg = 32601 + int(np.round((lon + 177) / 6.0))
     elif lat < 0:
-        return 32701 + int(np.round((lon + 177) / 6.0))
+        epsg = 32701 + int(np.round((lon + 177) / 6.0))
     else:
         raise ValueError(f'Could not determine EPSG for {lon}, {lat}')
-
-
-def _check_pixel_spacing(y_spacing_positive, x_spacing, epsg, product_str):
-    """
-    Verify pixel spacing
-
-    Parameters
-    ----------
-    y_spacing_positive: float
-        Y/latitude pixel spacing (absolute value)
-    x_spacing: float
-        X/longitude pixel spacing
-    epsg: int
-        EPSG code
-    product_str: str
-        Product type string (e.g., "Mosaic" or "Bursts")
-
-    Returns
-    -------
-    y_spacing: float
-        Y/latitude pixel spacing
-    x_spacing: float
-        X/longitude pixel spacing
-    """
-    # Check spacing in X direction
-    if x_spacing is not None and x_spacing <= 0:
-        err_str = f'{product_str} pixel spacing in X/longitude direction must'
-        err_str += f' be positive (x_spacing: {x_spacing})'
-        raise ValueError(err_str)
-    elif x_spacing is None and epsg and epsg == 4326:
-        x_spacing = SECONDS_IN_DEG
-    elif x_spacing is None and epsg:
-        x_spacing = 30
-
-    # Check spacing in Y direction
-    if y_spacing_positive is not None and y_spacing_positive <= 0:
-        err_str = f'{product_str} pixel spacing in Y/latitude direction must'
-        err_str += f' be positive (y_spacing: {y_spacing_positive})'
-        raise ValueError(err_str)
-    elif y_spacing_positive is None and epsg and epsg == 4326:
-        y_spacing = -SECONDS_IN_DEG
-    elif y_spacing_positive is None and epsg:
-        y_spacing = -30
-    elif y_spacing_positive is not None:
-        y_spacing = -y_spacing_positive
-
-    return y_spacing, x_spacing
+    assert 1024 <= epsg <= 32767, 'Computed EPSG is out of range'
+    return epsg
 
 
 def assign_check_geogrid(geogrid, xmin=None, ymax=None, xmax=None, ymin=None):
@@ -260,7 +214,7 @@ def snap_geogrid(geogrid, x_snap, y_snap):
     return geogrid
 
 
-def generate_geogrids(bursts, geo_dict, mosaic_dict):
+def generate_geogrids(bursts, geo_dict, mosaic_dict, opts):
     """
     Compute frame and bursts geogrids
 
@@ -283,7 +237,7 @@ def generate_geogrids(bursts, geo_dict, mosaic_dict):
         Dict containing bursts' geogrids indexed by burst_id
     """
     mosaic_geogrid_dict = mosaic_dict['mosaic_geogrid']
-    epsg_mosaic = mosaic_geogrid_dict['output_epsg']
+    epsg_mosaic = opts.output_epsg
     xmin_mosaic = mosaic_geogrid_dict['top_left']['x']
     ymax_mosaic = mosaic_geogrid_dict['top_left']['y']
     x_spacing_mosaic = mosaic_geogrid_dict['x_posting']
@@ -309,35 +263,14 @@ def generate_geogrids(bursts, geo_dict, mosaic_dict):
     xmax_all_bursts = -np.inf
     ymin_all_bursts = np.inf
 
-    if epsg_mosaic is None and epsg_bursts is not None:
-        epsg_mosaic = epsg_bursts
+    burst = bursts['t115_245714_iw1']['VV']
 
     # Compute mosaic and burst EPSG codes if not assigned in runconfig
     if epsg_mosaic is None:
-        y_list = []
-        x_list = []
-        for burst_pol in bursts.values():
-            pol_list = list(burst_pol.keys())
-            burst = burst_pol[pol_list[0]]
-            y_list.append(burst.center.y)
-            x_list.append(burst.center.x)
-        y_mean = np.nanmean(y_list)
-        x_mean = np.nanmean(x_list)
-        epsg_mosaic = get_point_epsg(y_mean, x_mean)
-    assert 1024 <= epsg_mosaic <= 32767
-
-    if epsg_bursts is None and epsg_mosaic is not None:
-        epsg_bursts = epsg_mosaic
-
-    product_mosaic_str = 'Mosaic'
-    y_spacing_mosaic, x_spacing_mosaic = _check_pixel_spacing(
-        y_spacing_positive_mosaic, x_spacing_mosaic, epsg_mosaic, product_mosaic_str
-    )
-
-    product_burst_str = 'Bursts'
-    y_spacing_bursts, x_spacing_bursts = _check_pixel_spacing(
-        y_spacing_positive_bursts, x_spacing_bursts, epsg_bursts, product_burst_str
-    )
+        epsg_mosaic = get_point_epsg(burst.center.y, burst.center.x)
+    epsg_bursts = epsg_mosaic
+    y_spacing_mosaic = -1 * y_spacing_positive_mosaic
+    y_spacing_bursts = -1 * y_spacing_positive_bursts
 
     geogrids_dict = {}
     for burst_id, burst_pol in bursts.items():

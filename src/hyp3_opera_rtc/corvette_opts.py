@@ -42,6 +42,7 @@ class RtcOptions:
     geo2rdr_numiter: int = 50
     rdr2geo_threshold: float = 1.0e-7
     rdr2geo_numiter: int = 25
+    output_epsg: int = None
 
     def __post_init__(self):
         if not self.rtc:
