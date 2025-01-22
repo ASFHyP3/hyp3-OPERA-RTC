@@ -7,7 +7,6 @@ import numpy as np
 @dataclass
 class RtcOptions:
     output_dir: str
-    scratch_dir: str
     dem_path: str
     rtc: bool = True
     thermal_noise: bool = True

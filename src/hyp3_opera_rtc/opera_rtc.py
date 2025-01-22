@@ -71,10 +71,9 @@ def opera_rtc(
     if work_dir is None:
         work_dir = Path.cwd()
 
-    scratch_dir = work_dir / 'scratch' / secrets.token_hex(2)
     input_dir = work_dir / 'input'
     output_dir = work_dir / 'output'
-    [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
+    [d.mkdir(parents=True, exist_ok=True) for d in [input_dir, output_dir]]
 
     if all([x.endswith('BURST') for x in granules]):
         granule_path, orbit_path, db_path, dem_path = prep_burst(granules, work_dir=input_dir)
@@ -93,7 +92,6 @@ def opera_rtc(
     opts = RtcOptions(
         dem_path=str(dem_path),
         output_dir=str(output_dir),
-        scratch_dir=str(scratch_dir),
         x_spacing=resolution,
         y_spacing=resolution,
     )

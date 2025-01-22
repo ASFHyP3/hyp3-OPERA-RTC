@@ -265,54 +265,6 @@ def apply_slc_corrections(
     del band_out
 
 
-def set_mask_fill_value_and_ctable(mask_file, reference_file):
-    """
-    Update color table and fill values of the layover shadow mask using
-    another file as reference for invalid samples
-
-    Parameters
-    -----------
-    mask_file: str
-        Layover/shadow mask file
-    reference_file: str
-        File to be used as reference for invalid samples
-
-    """
-    logger.info('    updating layover/shadow mask with fill value and color table')
-    ref_gdal_ds = gdal.Open(reference_file, gdal.GA_ReadOnly)
-    ref_gdal_band = ref_gdal_ds.GetRasterBand(1)
-    ref_array = ref_gdal_band.ReadAsArray()
-
-    mask_gdal_ds = gdal.Open(mask_file, gdal.GA_Update)
-    mask_ctable = gdal.ColorTable()
-
-    # Light gray - Not masked
-    mask_ctable.SetColorEntry(0, (175, 175, 175))
-
-    # Shadow - Dark gray
-    mask_ctable.SetColorEntry(1, (64, 64, 64))
-
-    # White - Layover
-    mask_ctable.SetColorEntry(2, (255, 255, 255))
-
-    # Cyan - Layover and shadow
-    mask_ctable.SetColorEntry(3, (0, 255, 255))
-
-    # No data
-    mask_gdal_band = mask_gdal_ds.GetRasterBand(1)
-    mask_array = mask_gdal_band.ReadAsArray()
-    mask_array[(np.isnan(ref_array)) & (mask_array == 0)] = 255
-    mask_gdal_band.SetNoDataValue(255)
-
-    mask_ctable.SetColorEntry(255, (0, 0, 0, 0))
-    mask_gdal_band.SetRasterColorTable(mask_ctable)
-    mask_gdal_band.SetRasterColorInterpretation(gdal.GCI_PaletteIndex)
-    mask_gdal_band.WriteArray(mask_array)
-
-    del mask_gdal_band
-    del mask_gdal_ds
-
-
 def compute_layover_shadow_mask(
     radar_grid: isce3.product.RadarGridParameters,
     orbit: isce3.core.Orbit,
@@ -645,7 +597,6 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
 
     tmp_files_list = []
     os.makedirs(opts.output_dir, exist_ok=True)
-    os.makedirs(opts.scratch_dir, exist_ok=True)
     vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
 
     burst_id = str(burst.burst_id)
@@ -660,12 +611,6 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     ellipsoid = isce3.core.Ellipsoid()
     zero_doppler = isce3.core.LUT2d()
     exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
-
-    logger.info('    burst geogrid:')
-    for line in str(geogrid).split('\n'):
-        if not line:
-            continue
-        logger.info(f'        {line}')
 
     # snap coordinates
     x_snap = geogrid.spacing_x
@@ -908,8 +853,6 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     )
 
     del geo_burst_raster
-
-    set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
     if opts.save_nlooks:
         out_geo_nlooks_obj.close_dataset()
