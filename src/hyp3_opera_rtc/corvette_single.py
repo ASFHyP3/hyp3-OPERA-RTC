@@ -14,9 +14,6 @@ from hyp3_opera_rtc.corvette_opts import RtcOptions
 logger = logging.getLogger('rtc_s1')
 
 STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR = 3
-STATIC_LAYERS_AZ_MARGIN = 1.2
-STATIC_LAYERS_RG_MARGIN = 0.2
-
 LAYER_NAME_LAYOVER_SHADOW_MASK = 'mask'
 LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0 = 'rtc_anf_gamma0_to_sigma0'
 LAYER_NAME_NUMBER_OF_LOOKS = 'number_of_looks'
@@ -702,13 +699,8 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     os.makedirs(opts.scratch_dir, exist_ok=True)
     vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
 
-    lookside = None
-    wavelength = None
-    orbit = None
-
     # iterate over sub-burts
     burst_id = str(burst.burst_id)
-    t_burst_start = time.time()
 
     burst_output_file_list = []
 
@@ -998,12 +990,10 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
 
     del geo_burst_raster
 
-    # Output imagery list contains multi-band files that will be used for mosaicking
+    _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
+
     if opts.save_mask:
         set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
-
-    _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
-    burst_output_file_list += output_burst_imagery_list
 
     if opts.save_nlooks:
         out_geo_nlooks_obj.close_dataset()
@@ -1037,19 +1027,6 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
         orbit,
         verbose=False,
     )
-    radar_grid_file_dict_filenames = list(radar_grid_file_dict.values())
-    burst_output_file_list += radar_grid_file_dict_filenames
-
-    t_burst_end = time.time()
-    logger.info(f'elapsed time (burst): {t_burst_end - t_burst_start}')
-
-    # end burst processing
-    # ===========================================================
-
-    for filename in tmp_files_list:
-        if not os.path.isfile(filename):
-            continue
-        os.remove(filename)
 
     t_end = time.time()
     logger.info(f'elapsed time: {t_end - t_start}')

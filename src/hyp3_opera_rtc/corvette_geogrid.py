@@ -99,7 +99,7 @@ def snap_geogrid(geogrid, x_snap, y_snap):
     return geogrid
 
 
-def generate_geogrids(burst, opts):
+def generate_geogrids(burst, x_spacing, y_spacing, x_snap, y_snap, output_epsg=None):
     """
     Compute frame and bursts geogrids
 
@@ -116,15 +116,14 @@ def generate_geogrids(burst, opts):
     geogrids_dict: dict
         Dict containing bursts' geogrids indexed by burst_id
     """
-    output_epsg = opts.output_epsg
     if output_epsg is None:
         output_epsg = get_point_epsg(burst.center.y, burst.center.x)
     epsg_bursts = output_epsg
-    y_spacing_negative = -1 * np.abs(opts.y_spacing)
+    y_spacing_negative = -1 * np.abs(y_spacing)
 
     radar_grid = burst.as_isce3_radargrid()
     geogrid = isce3.product.bbox_to_geogrid(
-        radar_grid, burst.orbit, isce3.core.LUT2d(), opts.x_spacing, y_spacing_negative, epsg_bursts
+        radar_grid, burst.orbit, isce3.core.LUT2d(), x_spacing, y_spacing_negative, epsg_bursts
     )
-    geogrid_snapped = snap_geogrid(geogrid, opts.x_snap, opts.y_snap)
+    geogrid_snapped = snap_geogrid(geogrid, x_snap, y_snap)
     return geogrid_snapped

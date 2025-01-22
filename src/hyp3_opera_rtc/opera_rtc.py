@@ -89,17 +89,15 @@ def opera_rtc(
     from hyp3_opera_rtc.corvette_opts import RtcOptions
     from hyp3_opera_rtc.corvette_single import run_single_job
 
+    burst = s1reader.load_bursts(str(granule_path), str(orbit_path), 1, 'VV')[0]
     opts = RtcOptions(
         dem_path=str(dem_path),
         output_dir=str(output_dir),
         scratch_dir=str(scratch_dir),
         x_spacing=resolution,
         y_spacing=resolution,
-        x_snap=resolution,
-        y_snap=resolution,
     )
-    burst = s1reader.load_bursts(str(granule_path), str(orbit_path), 1, 'VV')[0]
-    geogrid = generate_geogrids(burst, opts)
+    geogrid = generate_geogrids(burst, opts.x_spacing, opts.y_spacing, opts.x_snap, opts.y_snap)
     run_single_job(burst, geogrid, opts)
 
 
