@@ -84,38 +84,26 @@ def opera_rtc(
         granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
-    config_args = {
-        'config_path': config_path,
-        'granule_name': granule_path.name,
-        'orbit_name': orbit_path.name,
-        'db_name': db_path.name,
-        'dem_name': dem_path.name,
-        'bursts': burst_subset,
-        'resolution': resolution,
-    }
-    from rtc.core import create_logger
-    from rtc.runconfig import RunConfig, load_parameters
 
+    import s1reader
+    from rtc.runconfig import load_validate_yaml
+
+    from hyp3_opera_rtc.corvette_geogrid import generate_geogrids
     from hyp3_opera_rtc.corvette_opts import RtcOptions
-    from hyp3_opera_rtc.corvette_single import run_single_job, split_runconfig
+    from hyp3_opera_rtc.corvette_single import run_single_job
 
-    # Load from run_parallel
-    config_args['config_type'] = 'sas'
-    config_args['container_base_path'] = input_dir.parent
-    render_runconfig(**config_args)
-    log_path = str((output_dir / 'rtc.log').resolve())
-    create_logger(log_path, full_log_formatting=False)
-    cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
-    load_parameters(cfg)
+    burst = s1reader.load_bursts(str(granule_path), str(orbit_path), 1, 'VV')[0]
+    burst_dict = {str(burst.burst_id): {burst.polarization: burst}}
 
-    # Spilt into burst configs
-    runconfig_burst_list, _ = split_runconfig(cfg, str(output_dir), ['abcd'], str(scratch_dir), str(log_path))
+    cfg_dict = load_validate_yaml(config_path)
+    groups_cfg = cfg_dict['runconfig']['groups']
+    mosaic_dict = groups_cfg['processing']['mosaicking']
+    geocoding_dict = groups_cfg['processing']['geocoding']
+    geogrid_all, geogrids = generate_geogrids(burst_dict, geocoding_dict, mosaic_dict)
 
-    # Run burst RTC
-    cfg = RunConfig.load_from_yaml(runconfig_burst_list[0])
-    load_parameters(cfg)
     opts = RtcOptions(dem_path=str(dem_path), output_dir=str(output_dir), scratch_dir=str(scratch_dir))
-    run_single_job(cfg.bursts['t115_245714_iw1']['VV'], cfg, opts)
+
+    run_single_job(burst, geogrids['t115_245714_iw1'], opts)
 
 
 def main():

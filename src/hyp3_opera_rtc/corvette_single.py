@@ -821,7 +821,7 @@ def get_radar_grid(
         return
 
 
-def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
+def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     """
     Run geocode burst workflow with user-defined
     args stored in dictionary runconfig `cfg`
@@ -857,7 +857,6 @@ def run_single_job(burst: Sentinel1BurstSlc, cfg: RunConfig, opts: RtcOptions):
 
     burst_output_file_list = []
 
-    geogrid = cfg.geogrids[burst_id]
     pol = burst.polarization
     pol_list = [pol]
     burst_product_id = 'burst1'
