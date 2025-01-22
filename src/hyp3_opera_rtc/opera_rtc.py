@@ -1,5 +1,4 @@
 import argparse
-import secrets
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional

@@ -650,11 +650,9 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     tmp_files_list.append(geo_burst_filename)
 
     out_geo_nlooks_obj = None
-    if opts.save_nlooks:
-        nlooks_file = f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
-        burst_output_file_list.append(nlooks_file)
-    else:
-        nlooks_file = None
+
+    nlooks_file = f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
+    burst_output_file_list.append(nlooks_file)
 
     out_geo_rtc_obj = None
     if opts.save_rtc_anf:
@@ -749,10 +747,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     if opts.apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
         geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
 
-    if opts.save_nlooks:
-        out_geo_nlooks_obj = isce3.io.Raster(
-            nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
-        )
+    out_geo_nlooks_obj = isce3.io.Raster(nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format)
 
     if opts.save_rtc_anf:
         out_geo_rtc_obj = isce3.io.Raster(
@@ -854,9 +849,8 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
 
     del geo_burst_raster
 
-    if opts.save_nlooks:
-        out_geo_nlooks_obj.close_dataset()
-        del out_geo_nlooks_obj
+    out_geo_nlooks_obj.close_dataset()
+    del out_geo_nlooks_obj
 
     if opts.save_rtc_anf:
         out_geo_rtc_obj.close_dataset()
