@@ -643,12 +643,6 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     raster_format = 'GTiff'
     raster_extension = 'tif'
 
-    # Common initializations
-    dem_raster = isce3.io.Raster(opts.dem_path)
-    ellipsoid = isce3.core.Ellipsoid()
-    zero_doppler = isce3.core.LUT2d()
-    exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
-
     tmp_files_list = []
     os.makedirs(opts.output_dir, exist_ok=True)
     os.makedirs(opts.scratch_dir, exist_ok=True)
@@ -660,6 +654,12 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     output_dir = str(opts.output_dir)
     os.makedirs(output_dir, exist_ok=True)
     output_dir_sec_bursts = output_dir
+
+    # Common initializations
+    dem_raster = isce3.io.Raster(opts.dem_path)
+    ellipsoid = isce3.core.Ellipsoid()
+    zero_doppler = isce3.core.LUT2d()
+    exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
 
     logger.info('    burst geogrid:')
     for line in str(geogrid).split('\n'):
