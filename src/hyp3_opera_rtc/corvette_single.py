@@ -649,26 +649,16 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     geo_burst_filename = f'{output_dir}/{product_id}.{raster_extension}'
     tmp_files_list.append(geo_burst_filename)
 
-    out_geo_nlooks_obj = None
-
     nlooks_file = f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
     burst_output_file_list.append(nlooks_file)
 
-    out_geo_rtc_obj = None
-    if opts.save_rtc_anf:
-        rtc_anf_file = f'{output_dir_sec_bursts}/{product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
-        burst_output_file_list.append(rtc_anf_file)
-    else:
-        rtc_anf_file = None
+    rtc_anf_file = f'{output_dir_sec_bursts}/{product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
+    burst_output_file_list.append(rtc_anf_file)
 
-    out_geo_rtc_gamma0_to_sigma0_obj = None
-    if opts.save_rtc_anf_gamma0_to_sigma0:
-        rtc_anf_gamma0_to_sigma0_file = (
-            f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
-        )
-        burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
-    else:
-        rtc_anf_gamma0_to_sigma0_file = None
+    rtc_anf_gamma0_to_sigma0_file = (
+        f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
+    )
+    burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
 
     # geocoding optional arguments
     geocode_kwargs = {}
@@ -748,22 +738,16 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
 
     out_geo_nlooks_obj = isce3.io.Raster(nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format)
-
-    if opts.save_rtc_anf:
-        out_geo_rtc_obj = isce3.io.Raster(
-            rtc_anf_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format
-        )
-
-    if opts.save_rtc_anf_gamma0_to_sigma0:
-        out_geo_rtc_gamma0_to_sigma0_obj = isce3.io.Raster(
-            rtc_anf_gamma0_to_sigma0_file,
-            geogrid.width,
-            geogrid.length,
-            1,
-            gdal.GDT_Float32,
-            raster_format,
-        )
-        geocode_kwargs['out_geo_rtc_gamma0_to_sigma0'] = out_geo_rtc_gamma0_to_sigma0_obj
+    out_geo_rtc_obj = isce3.io.Raster(rtc_anf_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format)
+    out_geo_rtc_gamma0_to_sigma0_obj = isce3.io.Raster(
+        rtc_anf_gamma0_to_sigma0_file,
+        geogrid.width,
+        geogrid.length,
+        1,
+        gdal.GDT_Float32,
+        raster_format,
+    )
+    geocode_kwargs['out_geo_rtc_gamma0_to_sigma0'] = out_geo_rtc_gamma0_to_sigma0_obj
 
     # create multi-band VRT
     if len(input_file_list) == 1:
@@ -852,13 +836,11 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     out_geo_nlooks_obj.close_dataset()
     del out_geo_nlooks_obj
 
-    if opts.save_rtc_anf:
-        out_geo_rtc_obj.close_dataset()
-        del out_geo_rtc_obj
+    out_geo_rtc_obj.close_dataset()
+    del out_geo_rtc_obj
 
-    if opts.save_rtc_anf_gamma0_to_sigma0:
-        out_geo_rtc_gamma0_to_sigma0_obj.close_dataset()
-        del out_geo_rtc_gamma0_to_sigma0_obj
+    out_geo_rtc_gamma0_to_sigma0_obj.close_dataset()
+    del out_geo_rtc_gamma0_to_sigma0_obj
 
     radar_grid_file_dict = {}
     get_radar_grid(

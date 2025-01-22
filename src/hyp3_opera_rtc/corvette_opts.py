@@ -13,7 +13,6 @@ class RtcOptions:
     abs_rad: bool = True
     bistatic_delay: bool = True
     static_tropo: bool = True
-    save_metadata: bool = True
     dem_interpolation_method: str = 'biquintic'
     apply_valid_samples_sub_swath_masking: bool = True
     apply_shadow_masking: bool = True
@@ -27,8 +26,6 @@ class RtcOptions:
     clip_min: float = np.nan
     clip_max: float = np.nan
     upsample_radar_grid: bool = False
-    save_rtc_anf: bool = False
-    save_rtc_anf_gamma0_to_sigma0: bool = False
     terrain_radiometry: str = 'gamma0'  # 'gamma0' or 'sigma0'
     rtc_algorithm_type: str = 'area_projection'  # 'area_projection' or 'bilinear_distribution'
     input_terrain_radiometry: str = 'beta0'
