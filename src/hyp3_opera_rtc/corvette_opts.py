@@ -43,6 +43,8 @@ class RtcOptions:
     rdr2geo_threshold: float = 1.0e-7
     rdr2geo_numiter: int = 25
     output_epsg: int = None
+    x_spacing: int = 30
+    y_spacing: int = 30
 
     def __post_init__(self):
         if not self.rtc:
@@ -110,3 +112,6 @@ class RtcOptions:
             self.rtc_area_beta_mode_isce3 = isce3.geometry.RtcAreaBetaMode.AUTO
         else:
             raise ValueError(f'Invalid area beta mode: {self.rtc_area_beta_mode}')
+
+        self.x_snap = self.x_spacing
+        self.y_snap = self.y_spacing
