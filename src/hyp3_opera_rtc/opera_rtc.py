@@ -98,7 +98,7 @@ def opera_rtc(
         y_spacing=resolution,
     )
     geogrid = generate_geogrids(burst, opts.x_spacing, opts.y_spacing, opts.x_snap, opts.y_snap)
-    run_single_job(burst, geogrid, opts)
+    run_single_job('burst1', burst, geogrid, opts)
 
 
 def main():

@@ -25,51 +25,6 @@ LAYER_NAME_RANGE_SLOPE = 'range_slope'
 LAYER_NAME_DEM = 'interpolated_dem'
 
 
-def _separate_pol_channels(multi_band_file, output_file_list, output_raster_format, logger):
-    """Save a multi-band raster file as individual single-band files
-
-    Parameters
-    ----------
-    multi_band_file : str
-        Multi-band raster file
-    output_file_list : list(str)
-        Output file list
-    output_raster_format : str
-        Output raster format
-    logger : logging.Logger
-    """
-    gdal_ds = gdal.Open(multi_band_file, gdal.GA_ReadOnly)
-    projection = gdal_ds.GetProjectionRef()
-    geotransform = gdal_ds.GetGeoTransform()
-
-    num_bands = gdal_ds.RasterCount
-    if num_bands != len(output_file_list):
-        error_str = (
-            f'ERROR number of output files ({len(output_file_list)})'
-            f' does not match with the number'
-            f' of input bursts` bands ({num_bands})'
-        )
-        raise ValueError(error_str)
-
-    for b, output_file in enumerate(output_file_list):
-        gdal_band = gdal_ds.GetRasterBand(b + 1)
-        gdal_dtype = gdal_band.DataType
-        band_image = gdal_band.ReadAsArray()
-
-        # Save the corrected image
-        driver_out = gdal.GetDriverByName(output_raster_format)
-        raster_out = driver_out.Create(output_file, band_image.shape[1], band_image.shape[0], 1, gdal_dtype)
-
-        raster_out.SetProjection(projection)
-        raster_out.SetGeoTransform(geotransform)
-
-        band_out = raster_out.GetRasterBand(1)
-        band_out.WriteArray(band_image)
-        band_out.FlushCache()
-        del band_out
-        logger.info(f'file saved: {output_file}')
-
-
 def compute_correction_lut(
     burst_in,
     dem_raster,
@@ -673,7 +628,7 @@ def get_radar_grid(
         return
 
 
-def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
+def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     """
     Run geocode burst workflow with user-defined
     args stored in dictionary runconfig `cfg`
@@ -699,21 +654,12 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     os.makedirs(opts.scratch_dir, exist_ok=True)
     vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
 
-    # iterate over sub-burts
     burst_id = str(burst.burst_id)
-
     burst_output_file_list = []
 
-    pol = burst.polarization
-    pol_list = [pol]
-    burst_product_id = 'burst1'
-
-    burst_scratch_path = f'{opts.scratch_dir}/{burst_id}/'
-    os.makedirs(burst_scratch_path, exist_ok=True)
-
-    output_dir_bursts = os.path.join(opts.output_dir, burst_id)
-    os.makedirs(output_dir_bursts, exist_ok=True)
-    output_dir_sec_bursts = output_dir_bursts
+    output_dir = str(opts.output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    output_dir_sec_bursts = output_dir
 
     logger.info('    burst geogrid:')
     for line in str(geogrid).split('\n'):
@@ -727,17 +673,6 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     geogrid.start_x = np.floor(float(geogrid.start_x) / x_snap) * x_snap
     geogrid.start_y = np.ceil(float(geogrid.start_y) / y_snap) * y_snap
 
-    # Create burst HDF5
-    if opts.save_metadata:
-        hdf5_file_output_dir = os.path.join(opts.output_dir, burst_id)
-        os.makedirs(hdf5_file_output_dir, exist_ok=True)
-
-    # If burst imagery is not temporary, separate polarization channels
-    output_burst_imagery_list = []
-    for pol in pol_list:
-        geo_burst_pol_filename = os.path.join(output_dir_bursts, f'{burst_product_id}_{pol}.{raster_extension}')
-        output_burst_imagery_list.append(geo_burst_pol_filename)
-
     logger.info('    reading burst SLCs')
 
     radar_grid = burst.as_isce3_radargrid()
@@ -746,8 +681,8 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     lookside = radar_grid.lookside
 
     input_file_list = []
-    temp_slc_path = os.path.join(burst_scratch_path, f'slc_{pol}.vrt')
-    temp_slc_corrected_path = os.path.join(burst_scratch_path, f'slc_{pol}_corrected.{raster_extension}')
+    temp_slc_path = os.path.join(output_dir, 'slc.vrt')
+    temp_slc_corrected_path = os.path.join(output_dir, f'slc_corrected.{raster_extension}')
     if opts.thermal_noise or opts.abs_rad:
         apply_slc_corrections(
             burst,
@@ -766,19 +701,19 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     input_file_list.append(input_burst_filename)
 
     # At this point, burst imagery files are always temporary
-    geo_burst_filename = f'{burst_scratch_path}/{burst_product_id}.{raster_extension}'
+    geo_burst_filename = f'{output_dir}/{product_id}.{raster_extension}'
     tmp_files_list.append(geo_burst_filename)
 
     out_geo_nlooks_obj = None
     if opts.save_nlooks:
-        nlooks_file = f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
+        nlooks_file = f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
         burst_output_file_list.append(nlooks_file)
     else:
         nlooks_file = None
 
     out_geo_rtc_obj = None
     if opts.save_rtc_anf:
-        rtc_anf_file = f'{output_dir_sec_bursts}/{burst_product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
+        rtc_anf_file = f'{output_dir_sec_bursts}/{product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
         burst_output_file_list.append(rtc_anf_file)
     else:
         rtc_anf_file = None
@@ -786,7 +721,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     out_geo_rtc_gamma0_to_sigma0_obj = None
     if opts.save_rtc_anf_gamma0_to_sigma0:
         rtc_anf_gamma0_to_sigma0_file = (
-            f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
+            f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
         )
         burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
     else:
@@ -821,7 +756,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
         rg_lut, az_lut = compute_correction_lut(
             burst,
             dem_raster,
-            burst_scratch_path,
+            output_dir,
             opts.correction_lut_range_spacing_in_meters,
             opts.correction_lut_azimuth_spacing_in_meters,
             opts.bistatic_delay,
@@ -837,7 +772,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     # Calculate layover/shadow mask when requested
     # layover/shadow mask is saved in `output_dir_sec_bursts`
     layover_shadow_mask_file = (
-        f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
+        f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
     )
     logger.info(f'    computing layover shadow mask for {burst_id}')
     radar_grid_layover_shadow_mask = radar_grid
@@ -849,7 +784,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
         dem_raster,
         layover_shadow_mask_file,
         raster_format,
-        burst_scratch_path,
+        output_dir,
         shadow_dilation_size=opts.shadow_dilation_size,
         threshold_rdr2geo=opts.rdr2geo_threshold,
         numiter_rdr2geo=opts.rdr2geo_numiter,
@@ -894,7 +829,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     if len(input_file_list) == 1:
         rdr_burst_raster = isce3.io.Raster(input_file_list[0])
     else:
-        temp_vrt_path = f'{burst_scratch_path}/slc.vrt'
+        temp_vrt_path = f'{output_dir}/slc.vrt'
         gdal.BuildVRT(temp_vrt_path, input_file_list, options=vrt_options_mosaic)
         rdr_burst_raster = isce3.io.Raster(temp_vrt_path)
         tmp_files_list.append(temp_vrt_path)
@@ -974,7 +909,6 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
 
     del geo_burst_raster
 
-    _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
     set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
     if opts.save_nlooks:
@@ -993,7 +927,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     get_radar_grid(
         geogrid,
         opts.dem_interpolation_method_isce3,
-        burst_product_id,
+        product_id,
         output_dir_sec_bursts,
         raster_extension,
         False,
