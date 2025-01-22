@@ -84,7 +84,15 @@ def opera_rtc(
         granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
-
+    config_args = {
+        'config_path': config_path,
+        'granule_name': granule_path.name,
+        'orbit_name': orbit_path.name,
+        'db_name': db_path.name,
+        'dem_name': dem_path.name,
+        'bursts': burst_subset,
+        'resolution': resolution,
+    }
     import s1reader
     from rtc.runconfig import load_validate_yaml
 
@@ -92,8 +100,12 @@ def opera_rtc(
     from hyp3_opera_rtc.corvette_opts import RtcOptions
     from hyp3_opera_rtc.corvette_single import run_single_job
 
+    config_args['config_type'] = 'sas'
+    config_args['container_base_path'] = input_dir.parent
+    render_runconfig(**config_args)
+
     burst = s1reader.load_bursts(str(granule_path), str(orbit_path), 1, 'VV')[0]
-    burst_dict = {str(burst.burst_id): {burst.polarization: burst}}
+    burst_dict = {str(burst.burst_id):{burst.polarization: burst}}
 
     cfg_dict = load_validate_yaml(config_path)
     groups_cfg = cfg_dict['runconfig']['groups']

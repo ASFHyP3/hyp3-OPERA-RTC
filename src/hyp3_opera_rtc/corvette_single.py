@@ -4,9 +4,7 @@ import time
 
 import isce3
 import numpy as np
-import yaml
 from osgeo import gdal
-from rtc.runconfig import RunConfig
 from s1reader.s1_burst_slc import Sentinel1BurstSlc
 from scipy import ndimage
 
@@ -73,128 +71,6 @@ def _separate_pol_channels(multi_band_file, output_file_list, output_raster_form
         band_out.FlushCache()
         del band_out
         logger.info(f'file saved: {output_file}')
-
-
-# from rtc_s1.py
-def set_dict_item_recursive(dict_in, list_path, val):
-    """
-    - Recursively locate the key in `dict_in`,
-      whose path is provided in the list of keys.
-    - Add or update the value of the located key of `dict_in`
-    - Create the key in `dict_in` with empty dict when the key does not exist
-
-    Parameters
-    ----------
-    dict_in: dict
-        Dict to update
-    list_path: list
-        Path to the item in the multiple layer of dict
-    val: any
-        Value to add or set
-    """
-
-    if len(list_path) == 1:
-        key_in = list_path[0]
-        dict_in[key_in] = val
-        return
-
-    key_next = list_path[0]
-    if key_next not in dict_in.keys():
-        dict_in[key_next] = {}
-    set_dict_item_recursive(dict_in[key_next], list_path[1:], val)
-
-
-# from rtc_s1.py
-def split_runconfig(cfg_in, child_output_dir, burst_product_id_list, child_scratch_path=None, parent_logfile_path=None):
-    """
-    Split the input runconfig into single burst runconfigs.
-    Writes out the burst runconfigs.
-    Return the list of the burst runconfigs.
-
-    Parameters
-    ----------
-    cfg_in: rtc.runconfig.RunConfig
-        Path to the original runconfig
-    child_output_dir: str
-        Output directory of the child process
-    burst_product_id_list: list(str)
-        List of product IDs
-    child_scratch_path: str
-        Scratch path to of the child process.
-        If `None`, the scratch path of the child processes it will be:
-         "[scratch path of parent process]_child_scratch"
-    parent_logfile_path: str
-        Path to the parent processes' logfile
-
-    Returns
-    -------
-    runconfig_burst_list: list(str)
-        List of the burst runconfigs
-    logfile_burst_list: list(str)
-        List of the burst logfiles
-    """
-
-    with open(cfg_in.run_config_path, encoding='utf8') as fin:
-        runconfig_dict_in = yaml.safe_load(fin.read())
-
-    runconfig_burst_list = []
-    logfile_burst_list = []
-
-    # determine the bursts to process
-    list_burst_id = cfg_in.bursts.keys()
-
-    # determine the scratch path for the child process
-
-    if not child_scratch_path:
-        child_scratch_path = os.path.join(
-            cfg_in.groups.product_group.scratch_path, f'{os.path.basename(child_output_dir)}_child_scratch'
-        )
-
-    if parent_logfile_path:
-        # determine the output directory for child process
-        basename_logfile = os.path.basename(parent_logfile_path)
-    else:
-        basename_logfile = None
-
-    for burst_id, burst_product_id in zip(list_burst_id, burst_product_id_list):
-        path_temp_runconfig = os.path.join(cfg_in.scratch_path, f'burst_runconfig_{burst_id}.yaml')
-        if parent_logfile_path:
-            path_logfile_child = os.path.join(child_output_dir, burst_id, basename_logfile)
-
-        else:
-            path_logfile_child = None
-
-        runconfig_dict_out = runconfig_dict_in.copy()
-
-        set_dict_item_recursive(
-            runconfig_dict_out, ['runconfig', 'groups', 'product_group', 'product_id'], burst_product_id
-        )
-
-        set_dict_item_recursive(runconfig_dict_out, ['runconfig', 'groups', 'input_file_group', 'burst_id'], [burst_id])
-
-        set_dict_item_recursive(
-            runconfig_dict_out, ['runconfig', 'groups', 'processing', 'geocoding', 'memory_mode'], 'single_block'
-        )
-
-        set_dict_item_recursive(
-            runconfig_dict_out, ['runconfig', 'groups', 'product_group', 'output_dir'], child_output_dir
-        )
-
-        set_dict_item_recursive(
-            runconfig_dict_out, ['runconfig', 'groups', 'product_group', 'scratch_path'], child_scratch_path
-        )
-
-        set_dict_item_recursive(runconfig_dict_out, ['runconfig', 'groups', 'product_group', 'save_mosaics'], False)
-
-        set_dict_item_recursive(runconfig_dict_out, ['runconfig', 'groups', 'product_group', 'save_bursts'], True)
-
-        runconfig_burst_list.append(path_temp_runconfig)
-        logfile_burst_list.append(path_logfile_child)
-
-        with open(path_temp_runconfig, 'w+', encoding='utf8') as fout:
-            yaml.dump(runconfig_dict_out, fout)
-
-    return runconfig_burst_list, logfile_burst_list
 
 
 def compute_correction_lut(
@@ -435,27 +311,6 @@ def apply_slc_corrections(
     band_out.WriteArray(corrected_image)
     band_out.FlushCache()
     del band_out
-
-
-def _test_valid_gdal_ref(gdal_ref):
-    """
-    Test if the input string contains a valid GDAL reference.
-
-    Parameters
-    -----------
-    gdal_ref: str
-        Input string
-
-    Returns
-    -------
-    _ : bool
-        Boolean value indicating if the input string is a valid GDAL reference
-    """
-    try:
-        gdal_ds = gdal.Open(gdal_ref, gdal.GA_ReadOnly)
-    except:  # noqa
-        return False
-    return gdal_ds is not None
 
 
 def set_mask_fill_value_and_ctable(mask_file, reference_file):
