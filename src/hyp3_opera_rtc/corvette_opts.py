@@ -29,7 +29,6 @@ class RtcOptions:
     clip_max: float = np.nan
     upsample_radar_grid: bool = False
     save_nlooks: bool = False
-    save_mask: bool = True
     save_rtc_anf: bool = False
     save_rtc_anf_gamma0_to_sigma0: bool = False
     terrain_radiometry: str = 'gamma0'  # 'gamma0' or 'sigma0'

@@ -835,55 +835,39 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
             geocode_kwargs['slant_range_correction'] = rg_lut
 
     # Calculate layover/shadow mask when requested
-    if opts.save_mask or opts.apply_shadow_masking:
-        flag_layover_shadow_mask_is_temporary = opts.apply_shadow_masking and not opts.save_mask
-        if flag_layover_shadow_mask_is_temporary:
-            # layover/shadow mask is temporary
-            layover_shadow_mask_file = (
-                f'{burst_scratch_path}/{burst_product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
-            )
-        else:
-            # layover/shadow mask is saved in `output_dir_sec_bursts`
-            layover_shadow_mask_file = (
-                f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
-            )
-        logger.info(f'    computing layover shadow mask for {burst_id}')
-        radar_grid_layover_shadow_mask = radar_grid
-        slantrange_layover_shadow_mask_raster = compute_layover_shadow_mask(
-            radar_grid_layover_shadow_mask,
-            orbit,
-            geogrid,
-            burst,
-            dem_raster,
-            layover_shadow_mask_file,
-            raster_format,
-            burst_scratch_path,
-            shadow_dilation_size=opts.shadow_dilation_size,
-            threshold_rdr2geo=opts.rdr2geo_threshold,
-            numiter_rdr2geo=opts.rdr2geo_numiter,
-            threshold_geo2rdr=opts.geo2rdr_threshold,
-            numiter_geo2rdr=opts.geo2rdr_numiter,
-            memory_mode=opts.memory_mode_isce3,
-            geocode_options=layover_shadow_mask_geocode_kwargs,
-        )
+    # layover/shadow mask is saved in `output_dir_sec_bursts`
+    layover_shadow_mask_file = (
+        f'{output_dir_sec_bursts}/{burst_product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
+    )
+    logger.info(f'    computing layover shadow mask for {burst_id}')
+    radar_grid_layover_shadow_mask = radar_grid
+    slantrange_layover_shadow_mask_raster = compute_layover_shadow_mask(
+        radar_grid_layover_shadow_mask,
+        orbit,
+        geogrid,
+        burst,
+        dem_raster,
+        layover_shadow_mask_file,
+        raster_format,
+        burst_scratch_path,
+        shadow_dilation_size=opts.shadow_dilation_size,
+        threshold_rdr2geo=opts.rdr2geo_threshold,
+        numiter_rdr2geo=opts.rdr2geo_numiter,
+        threshold_geo2rdr=opts.geo2rdr_threshold,
+        numiter_geo2rdr=opts.geo2rdr_numiter,
+        memory_mode=opts.memory_mode_isce3,
+        geocode_options=layover_shadow_mask_geocode_kwargs,
+    )
 
-        if flag_layover_shadow_mask_is_temporary:
-            tmp_files_list.append(layover_shadow_mask_file)
-        else:
-            burst_output_file_list.append(layover_shadow_mask_file)
-            logger.info(f'file saved: {layover_shadow_mask_file}')
+    burst_output_file_list.append(layover_shadow_mask_file)
+    logger.info(f'file saved: {layover_shadow_mask_file}')
 
-        if not opts.save_mask:
-            layover_shadow_mask_file = None
-
-        # The radar grid for static layers is multilooked by a factor of
-        # STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR. If that
-        # number is not unitary, the layover shadow mask cannot be used
-        # with geocoding
-        if opts.apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
-            geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
-    else:
-        layover_shadow_mask_file = None
+    # The radar grid for static layers is multilooked by a factor of
+    # STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR. If that
+    # number is not unitary, the layover shadow mask cannot be used
+    # with geocoding
+    if opts.apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
+        geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
 
     if opts.save_nlooks:
         out_geo_nlooks_obj = isce3.io.Raster(
@@ -991,9 +975,7 @@ def run_single_job(burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
     del geo_burst_raster
 
     _separate_pol_channels(geo_burst_filename, output_burst_imagery_list, raster_format, logger)
-
-    if opts.save_mask:
-        set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
+    set_mask_fill_value_and_ctable(layover_shadow_mask_file, geo_burst_filename)
 
     if opts.save_nlooks:
         out_geo_nlooks_obj.close_dataset()
