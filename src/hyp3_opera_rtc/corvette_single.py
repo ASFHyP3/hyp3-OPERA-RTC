@@ -595,15 +595,9 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     raster_format = 'GTiff'
     raster_extension = 'tif'
 
-    tmp_files_list = []
-    os.makedirs(opts.output_dir, exist_ok=True)
-
     burst_id = str(burst.burst_id)
-    burst_output_file_list = []
-
     output_dir = str(opts.output_dir)
     os.makedirs(output_dir, exist_ok=True)
-    output_dir_sec_bursts = output_dir
 
     # Common initializations
     dem_raster = isce3.io.Raster(opts.dem_path)
@@ -636,25 +630,15 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
             flag_apply_abs_rad_correction=True,
         )
         input_burst_filename = temp_slc_corrected_path
-        tmp_files_list.append(temp_slc_corrected_path)
     else:
         input_burst_filename = temp_slc_path
 
-    tmp_files_list.append(temp_slc_path)
-
     geo_burst_filename = f'{output_dir}/{product_id}.{raster_extension}'
-    tmp_files_list.append(geo_burst_filename)
-
-    nlooks_file = f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
-    burst_output_file_list.append(nlooks_file)
-
-    rtc_anf_file = f'{output_dir_sec_bursts}/{product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
-    burst_output_file_list.append(rtc_anf_file)
-
+    nlooks_file = f'{output_dir}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
+    rtc_anf_file = f'{output_dir}/{product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
     rtc_anf_gamma0_to_sigma0_file = (
-        f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
+        f'{output_dir}/{product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
     )
-    burst_output_file_list.append(rtc_anf_gamma0_to_sigma0_file)
 
     # geocoding optional arguments
     geocode_kwargs = {}
@@ -700,9 +684,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
 
     # Calculate layover/shadow mask when requested
     # layover/shadow mask is saved in `output_dir_sec_bursts`
-    layover_shadow_mask_file = (
-        f'{output_dir_sec_bursts}/{product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
-    )
+    layover_shadow_mask_file = f'{output_dir}/{product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
     logger.info(f'    computing layover shadow mask for {burst_id}')
     radar_grid_layover_shadow_mask = radar_grid
     slantrange_layover_shadow_mask_raster = compute_layover_shadow_mask(
@@ -722,10 +704,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         memory_mode=opts.memory_mode_isce3,
         geocode_options=layover_shadow_mask_geocode_kwargs,
     )
-
-    burst_output_file_list.append(layover_shadow_mask_file)
     logger.info(f'file saved: {layover_shadow_mask_file}')
-
     # The radar grid for static layers is multilooked by a factor of
     # STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR. If that
     # number is not unitary, the layover shadow mask cannot be used
@@ -835,7 +814,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         geogrid,
         opts.dem_interpolation_method_isce3,
         product_id,
-        output_dir_sec_bursts,
+        output_dir,
         raster_extension,
         False,
         False,
