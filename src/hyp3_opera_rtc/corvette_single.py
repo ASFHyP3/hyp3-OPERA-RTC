@@ -13,7 +13,6 @@ from hyp3_opera_rtc.corvette_opts import RtcOptions
 
 logger = logging.getLogger('rtc_s1')
 
-STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR = 3
 LAYER_NAME_LAYOVER_SHADOW_MASK = 'mask'
 LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0 = 'rtc_anf_gamma0_to_sigma0'
 LAYER_NAME_NUMBER_OF_LOOKS = 'number_of_looks'
@@ -65,9 +64,6 @@ def compute_correction_lut(
 
     rg_lut = None
     az_lut = None
-
-    if not apply_bistatic_delay_correction and not apply_static_tropospheric_delay_correction:
-        return rg_lut, az_lut
 
     # approximate conversion of az_step_meters from meters to seconds
     numrow_orbit = burst_in.orbit.position.shape[0]
@@ -590,6 +586,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     cfg: RunConfig
         RunConfig object with user runconfig options
     """
+    # Common initializations
     t_start = time.time()
 
     raster_format = 'GTiff'
@@ -599,46 +596,45 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     output_dir = str(opts.output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Common initializations
-    dem_raster = isce3.io.Raster(opts.dem_path)
-    ellipsoid = isce3.core.Ellipsoid()
-    zero_doppler = isce3.core.LUT2d()
-    exponent = 1 if (opts.thermal_noise or opts.ads_rad) else 2
-
-    # snap coordinates
-    x_snap = geogrid.spacing_x
-    y_snap = geogrid.spacing_y
-    geogrid.start_x = np.floor(float(geogrid.start_x) / x_snap) * x_snap
-    geogrid.start_y = np.ceil(float(geogrid.start_y) / y_snap) * y_snap
-
-    logger.info('    reading burst SLCs')
-
-    radar_grid = burst.as_isce3_radargrid()
-    orbit = burst.orbit
-    wavelength = burst.wavelength
-    lookside = radar_grid.lookside
-
+    # Filenames
     temp_slc_path = os.path.join(output_dir, 'slc.vrt')
     temp_slc_corrected_path = os.path.join(output_dir, f'slc_corrected.{raster_extension}')
-    if opts.thermal_noise or opts.abs_rad:
-        apply_slc_corrections(
-            burst,
-            temp_slc_path,
-            temp_slc_corrected_path,
-            flag_output_complex=False,
-            flag_thermal_correction=opts.thermal_noise,
-            flag_apply_abs_rad_correction=True,
-        )
-        input_burst_filename = temp_slc_corrected_path
-    else:
-        input_burst_filename = temp_slc_path
-
     geo_burst_filename = f'{output_dir}/{product_id}.{raster_extension}'
     nlooks_file = f'{output_dir}/{product_id}_{LAYER_NAME_NUMBER_OF_LOOKS}.{raster_extension}'
     rtc_anf_file = f'{output_dir}/{product_id}_{opts.layer_name_rtc_anf}.{raster_extension}'
     rtc_anf_gamma0_to_sigma0_file = (
         f'{output_dir}/{product_id}_{LAYER_NAME_RTC_ANF_GAMMA0_TO_SIGMA0}.{raster_extension}'
     )
+
+    logger.info('    reading burst SLCs')
+    radar_grid = burst.as_isce3_radargrid()
+    orbit = burst.orbit
+    wavelength = burst.wavelength
+    lookside = radar_grid.lookside
+
+    dem_raster = isce3.io.Raster(opts.dem_path)
+    ellipsoid = isce3.core.Ellipsoid()
+    zero_doppler = isce3.core.LUT2d()
+    exponent = 1 if (opts.apply_thermal_noise or opts.ads_rad) else 2
+
+    x_snap = geogrid.spacing_x
+    y_snap = geogrid.spacing_y
+    geogrid.start_x = np.floor(float(geogrid.start_x) / x_snap) * x_snap
+    geogrid.start_y = np.ceil(float(geogrid.start_y) / y_snap) * y_snap
+
+    # Convert to beta0 and apply thermal noise correction
+    if opts.apply_thermal_noise or opts.apply_abs_rad:
+        apply_slc_corrections(
+            burst,
+            temp_slc_path,
+            temp_slc_corrected_path,
+            flag_output_complex=False,
+            flag_thermal_correction=opts.apply_thermal_noise,
+            flag_apply_abs_rad_correction=opts.apply_abs_rad,
+        )
+        input_burst_filename = temp_slc_corrected_path
+    else:
+        input_burst_filename = temp_slc_path
 
     # geocoding optional arguments
     geocode_kwargs = {}
@@ -663,27 +659,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         geocode_kwargs['sub_swaths'] = sub_swaths
         layover_shadow_mask_geocode_kwargs['sub_swaths'] = sub_swaths
 
-    # Calculate geolocation correction LUT
-    if opts.bistatic_delay or opts.static_tropo:
-        # Calculates the LUTs for one polarization in `burst_pol_dict`
-        rg_lut, az_lut = compute_correction_lut(
-            burst,
-            dem_raster,
-            output_dir,
-            opts.correction_lut_range_spacing_in_meters,
-            opts.correction_lut_azimuth_spacing_in_meters,
-            opts.bistatic_delay,
-            opts.static_tropo,
-        )
-
-        if az_lut is not None:
-            geocode_kwargs['az_time_correction'] = az_lut
-
-        if rg_lut is not None:
-            geocode_kwargs['slant_range_correction'] = rg_lut
-
-    # Calculate layover/shadow mask when requested
-    # layover/shadow mask is saved in `output_dir_sec_bursts`
+    # Calculate layover/shadow mask
     layover_shadow_mask_file = f'{output_dir}/{product_id}_{LAYER_NAME_LAYOVER_SHADOW_MASK}.{raster_extension}'
     logger.info(f'    computing layover shadow mask for {burst_id}')
     radar_grid_layover_shadow_mask = radar_grid
@@ -705,11 +681,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         geocode_options=layover_shadow_mask_geocode_kwargs,
     )
     logger.info(f'file saved: {layover_shadow_mask_file}')
-    # The radar grid for static layers is multilooked by a factor of
-    # STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR. If that
-    # number is not unitary, the layover shadow mask cannot be used
-    # with geocoding
-    if opts.apply_shadow_masking or STATIC_LAYERS_LAYOVER_SHADOW_MASK_MULTILOOK_FACTOR == 1:
+    if opts.apply_shadow_masking:
         geocode_kwargs['input_layover_shadow_mask_raster'] = slantrange_layover_shadow_mask_raster
 
     out_geo_nlooks_obj = isce3.io.Raster(nlooks_file, geogrid.width, geogrid.length, 1, gdal.GDT_Float32, raster_format)
@@ -724,15 +696,25 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     )
     geocode_kwargs['out_geo_rtc_gamma0_to_sigma0'] = out_geo_rtc_gamma0_to_sigma0_obj
 
+    # Calculate geolocation correction LUT
+    if opts.apply_bistatic_delay or opts.apply_static_tropo:
+        rg_lut, az_lut = compute_correction_lut(
+            burst,
+            dem_raster,
+            output_dir,
+            opts.correction_lut_range_spacing_in_meters,
+            opts.correction_lut_azimuth_spacing_in_meters,
+            opts.apply_bistatic_delay,
+            opts.apply_static_tropo,
+        )
+        geocode_kwargs['az_time_correction'] = az_lut
+        if rg_lut is not None:
+            geocode_kwargs['slant_range_correction'] = rg_lut
+
     rdr_burst_raster = isce3.io.Raster(input_burst_filename)
     # Generate output geocoded burst raster
     geo_burst_raster = isce3.io.Raster(
-        geo_burst_filename,
-        geogrid.width,
-        geogrid.length,
-        rdr_burst_raster.num_bands,
-        gdal.GDT_Float32,
-        raster_format,
+        geo_burst_filename, geogrid.width, geogrid.length, rdr_burst_raster.num_bands, gdal.GDT_Float32, raster_format
     )
 
     # init Geocode object depending on raster type
@@ -776,7 +758,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         dem_raster=dem_raster,
         output_mode=opts.geocode_algorithm_isce3,
         geogrid_upsampling=opts.geogrid_upsampling,
-        flag_apply_rtc=opts.rtc,
+        flag_apply_rtc=opts.apply_rtc,
         input_terrain_radiometry=opts.input_terrain_radiometry_isce3,
         output_terrain_radiometry=opts.terrain_radiometry_isce3,
         exponent=exponent,

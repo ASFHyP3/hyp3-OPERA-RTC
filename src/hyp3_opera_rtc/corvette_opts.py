@@ -8,14 +8,14 @@ import numpy as np
 class RtcOptions:
     output_dir: str
     dem_path: str
-    rtc: bool = True
-    thermal_noise: bool = True
-    abs_rad: bool = True
-    bistatic_delay: bool = True
-    static_tropo: bool = True
-    dem_interpolation_method: str = 'biquintic'
+    apply_rtc: bool = True
+    apply_thermal_noise: bool = True
+    apply_abs_rad: bool = True
+    apply_bistatic_delay: bool = True
+    apply_static_tropo: bool = True
     apply_valid_samples_sub_swath_masking: bool = True
     apply_shadow_masking: bool = True
+    dem_interpolation_method: str = 'biquintic'
     geocode_algorithm: str = 'area_projection'  # 'area_projection' or 'interp'
     correction_lut_azimuth_spacing_in_meters: int = 120
     correction_lut_range_spacing_in_meters: int = 120
@@ -41,7 +41,7 @@ class RtcOptions:
     y_spacing: int = 30
 
     def __post_init__(self):
-        if not self.rtc:
+        if not self.apply_rtc:
             if self.save_rtc_anf:
                 raise ValueError('RTC ANF flags are only available with RTC enabled')
             if self.save_rtc_anf_gamma0_to_sigma0:
@@ -50,7 +50,7 @@ class RtcOptions:
         if self.terrain_radiometry == 'sigma0' and self.save_rtc_anf_gamma0_to_sigma0:
             raise ValueError('RTC ANF gamma0 to sigma0 flags are only available with output type set to gamma0')
 
-        if self.rtc:
+        if self.apply_rtc:
             self.layer_name_rtc_anf = f'rtc_anf_{self.terrain_radiometry}_to_{self.input_terrain_radiometry}'
         else:
             self.layer_name_rtc_anf = ''
@@ -93,7 +93,7 @@ class RtcOptions:
         else:
             raise ValueError(f'Invalid terrain radiometry: {self.terrain_radiometry}')
 
-        if self.rtc:
+        if self.apply_rtc:
             self.layer_name_rtc_anf = f'rtc_anf_{self.terrain_radiometry}_to_{self.input_terrain_radiometry}'
         else:
             self.layer_name_rtc_anf = ''
