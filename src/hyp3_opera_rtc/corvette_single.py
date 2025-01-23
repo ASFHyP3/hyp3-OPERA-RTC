@@ -143,58 +143,6 @@ def compute_correction_lut(
     return rg_lut, az_lut
 
 
-def _create_raster_obj(
-    output_dir,
-    product_id,
-    layer_name,
-    dtype,
-    shape,
-    radar_grid_file_dict,
-    output_obj_list,
-    flag_create_raster_obj,
-    extension,
-):
-    """Create an ISCE3 raster object (GTiff) for a radar geometry layer.
-
-    Parameters
-    ----------
-    output_dir: str
-           Output directory
-    layer_name: str
-           Layer name
-    product_id: str
-           Product ID
-    ds_hdf5: str
-           HDF5 dataset name
-    dtype:: gdal.DataType
-           GDAL data type
-    shape: list
-           Shape of the output raster
-    radar_grid_file_dict: dict
-           Dictionary that will hold the name of the output file
-           referenced by the contents of `ds_hdf5` (dict key)
-    output_obj_list: list
-           Mutable list of output raster objects
-    flag_create_raster_obj: bool
-           Flag indicating if raster object should be created
-
-    Returns
-    -------
-    raster_obj : isce3.io.Raster
-           ISCE3 raster object
-    """
-    if flag_create_raster_obj is not True:
-        return None
-
-    ds_name = f'{product_id}_{layer_name}'
-
-    output_file = os.path.join(output_dir, ds_name) + '.' + extension
-    raster_obj = isce3.io.Raster(output_file, shape[2], shape[1], shape[0], dtype, 'GTiff')
-    output_obj_list.append(raster_obj)
-    radar_grid_file_dict[layer_name] = output_file
-    return raster_obj
-
-
 def apply_slc_corrections(
     burst_in: Sentinel1BurstSlc,
     path_slc_vrt: str,
@@ -447,95 +395,90 @@ def compute_layover_shadow_mask(
     return slantrange_layover_shadow_mask_raster
 
 
-def get_radar_grid(
+def _create_raster_obj(
+    output_dir,
+    product_id,
+    layer_name,
+    dtype,
+    shape,
+    radar_grid_file_dict,
+    output_obj_list,
+):
+    """Create an ISCE3 raster object (GTiff) for a radar geometry layer.
+
+    Parameters
+    ----------
+    output_dir: str
+           Output directory
+    product_id: str
+           Product ID
+    dtype:: gdal.DataType
+           GDAL data type
+    shape: list
+           Shape of the output raster
+    radar_grid_file_dict: dict
+           Dictionary that will hold the name of the output file
+           referenced by the contents of `ds_hdf5` (dict key)
+    output_obj_list: list
+           Mutable list of output raster objects
+
+    Returns
+    -------
+    raster_obj : isce3.io.Raster
+           ISCE3 raster object
+    """
+    ds_name = f'{product_id}_{layer_name}'
+    output_file = os.path.join(output_dir, ds_name) + '.tif'
+    raster_obj = isce3.io.Raster(output_file, shape[2], shape[1], shape[0], dtype, 'GTiff')
+    output_obj_list.append(raster_obj)
+    radar_grid_file_dict[layer_name] = output_file
+    return raster_obj
+
+
+def save_intermediate_geocode_files(
     geogrid,
     dem_interp_method_enum,
     product_id,
     output_dir,
     extension,
-    save_local_inc_angle,
-    save_incidence_angle,
-    save_projection_angle,
-    save_rtc_anf_projection_angle,
-    save_range_slope,
-    save_dem,
     dem_raster,
     radar_grid_file_dict,
     lookside,
     wavelength,
     orbit,
-    verbose=True,
 ):
+    # FIXME: Computation of range slope is not merged to ISCE yet
     output_obj_list = []
     layers_nbands = 1
     shape = [layers_nbands, geogrid.length, geogrid.width]
-
-    local_incidence_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
+    names = [
         LAYER_NAME_LOCAL_INCIDENCE_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_local_inc_angle,
-        extension,
-    )
-    incidence_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
         LAYER_NAME_INCIDENCE_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_incidence_angle,
-        extension,
-    )
-    projection_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
         LAYER_NAME_PROJECTION_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_projection_angle,
-        extension,
-    )
-    rtc_anf_projection_angle_raster = _create_raster_obj(
-        output_dir,
-        product_id,
         LAYER_NAME_RTC_ANF_PROJECTION_ANGLE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_rtc_anf_projection_angle,
-        extension,
-    )
-    range_slope_raster = _create_raster_obj(
-        output_dir,
-        product_id,
-        LAYER_NAME_RANGE_SLOPE,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_range_slope,
-        extension,
-    )
-    interpolated_dem_raster = _create_raster_obj(
-        output_dir,
-        product_id,
+        # LAYER_NAME_RANGE_SLOPE, # FIXME
         LAYER_NAME_DEM,
-        gdal.GDT_Float32,
-        shape,
-        radar_grid_file_dict,
-        output_obj_list,
-        save_dem,
-        extension,
-    )
+    ]
+    raster_objs = []
+    for name in names:
+        raster_obj = _create_raster_obj(
+            output_dir,
+            product_id,
+            name,
+            gdal.GDT_Float32,
+            shape,
+            radar_grid_file_dict,
+            output_obj_list,
+        )
+        raster_objs.append(raster_obj)
+    (
+        local_incidence_angle_raster,
+        incidence_angle_raster,
+        projection_angle_raster,
+        rtc_anf_projection_angle_raster,
+        # range_slope_raster, # FIXME
+        interpolated_dem_raster,
+    ) = raster_objs
 
     # TODO review this (Doppler)!!!
     # native_doppler = burst.doppler.lut2d
@@ -544,13 +487,6 @@ def get_radar_grid(
     grid_doppler = isce3.core.LUT2d()
     grid_doppler.bounds_error = False
 
-    # TODO: update code below
-    # Computation of range slope is not merged to ISCE yet
-    kwargs_get_radar_grid = {}
-    if range_slope_raster:
-        kwargs_get_radar_grid['range_slope_angle_raster'] = range_slope_raster
-
-    # call get_radar_grid()
     isce3.geogrid.get_radar_grid(
         lookside,
         wavelength,
@@ -559,21 +495,16 @@ def get_radar_grid(
         orbit,
         native_doppler,
         grid_doppler,
+        dem_interp_method_enum,
         incidence_angle_raster=incidence_angle_raster,
         local_incidence_angle_raster=local_incidence_angle_raster,
         projection_angle_raster=projection_angle_raster,
         simulated_radar_brightness_raster=rtc_anf_projection_angle_raster,
         interpolated_dem_raster=interpolated_dem_raster,
-        dem_interp_method=dem_interp_method_enum,
-        **kwargs_get_radar_grid,
+        # range_slope_angle_raster=range_slope_raster, # FIXME
     )
-
-    # Flush data
     for obj in output_obj_list:
         del obj
-
-    if not verbose:
-        return
 
 
 def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: RtcOptions):
@@ -792,24 +723,17 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     del out_geo_rtc_gamma0_to_sigma0_obj
 
     radar_grid_file_dict = {}
-    get_radar_grid(
+    save_intermediate_geocode_files(
         geogrid,
         opts.dem_interpolation_method_isce3,
         product_id,
         output_dir,
         raster_extension,
-        True,
-        True,
-        True,
-        True,
-        False,
-        True,
         dem_raster,
         radar_grid_file_dict,
         lookside,
         wavelength,
         orbit,
-        verbose=False,
     )
 
     t_end = time.time()
