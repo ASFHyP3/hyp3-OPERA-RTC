@@ -597,7 +597,6 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
 
     tmp_files_list = []
     os.makedirs(opts.output_dir, exist_ok=True)
-    vrt_options_mosaic = gdal.BuildVRTOptions(separate=True)
 
     burst_id = str(burst.burst_id)
     burst_output_file_list = []
@@ -625,7 +624,6 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     wavelength = burst.wavelength
     lookside = radar_grid.lookside
 
-    input_file_list = []
     temp_slc_path = os.path.join(output_dir, 'slc.vrt')
     temp_slc_corrected_path = os.path.join(output_dir, f'slc_corrected.{raster_extension}')
     if opts.thermal_noise or opts.abs_rad:
@@ -643,9 +641,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
         input_burst_filename = temp_slc_path
 
     tmp_files_list.append(temp_slc_path)
-    input_file_list.append(input_burst_filename)
 
-    # At this point, burst imagery files are always temporary
     geo_burst_filename = f'{output_dir}/{product_id}.{raster_extension}'
     tmp_files_list.append(geo_burst_filename)
 
@@ -749,15 +745,7 @@ def run_single_job(product_id: str, burst: Sentinel1BurstSlc, geogrid, opts: Rtc
     )
     geocode_kwargs['out_geo_rtc_gamma0_to_sigma0'] = out_geo_rtc_gamma0_to_sigma0_obj
 
-    # create multi-band VRT
-    if len(input_file_list) == 1:
-        rdr_burst_raster = isce3.io.Raster(input_file_list[0])
-    else:
-        temp_vrt_path = f'{output_dir}/slc.vrt'
-        gdal.BuildVRT(temp_vrt_path, input_file_list, options=vrt_options_mosaic)
-        rdr_burst_raster = isce3.io.Raster(temp_vrt_path)
-        tmp_files_list.append(temp_vrt_path)
-
+    rdr_burst_raster = isce3.io.Raster(input_burst_filename)
     # Generate output geocoded burst raster
     geo_burst_raster = isce3.io.Raster(
         geo_burst_filename,
