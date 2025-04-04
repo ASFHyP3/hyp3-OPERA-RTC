@@ -13,7 +13,7 @@ def prep_slc(
     """Prepare data for SLC-based processing.
 
     Args:
-        granules: Sentinel-1 SLC granule to create RTC datasets for
+        granule: Sentinel-1 SLC granule to create RTC datasets for
         work_dir: Working directory for processing
     """
     if work_dir is None:

@@ -126,7 +126,7 @@ def opera_rtc(
 
 
 def main():
-    """Create an OPERA RTC
+    """Create an OPERA RTC.
 
     Example commands:
     python -m hyp3_opera_rtc ++process opera_rtc \

@@ -1,4 +1,4 @@
-"""OPERA-RTC processing for HyP3"""
+"""OPERA-RTC processing for HyP3."""
 
 import argparse
 import sys
@@ -6,7 +6,7 @@ from importlib.metadata import entry_points
 
 
 def main():
-    """Main entrypoint for HyP3 processing
+    """Main entrypoint for HyP3 processing.
 
     Calls the HyP3 entrypoint specified by the `++process` argument
     """

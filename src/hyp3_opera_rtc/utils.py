@@ -36,6 +36,7 @@ def download_file(
 
 def download_burst_db(save_dir: Path) -> Path:
     """Download the OPERA burst database.
+
     Currently using a version created using opera-adt/burst_db v0.4.0, but hope to switch to ASF-provide source.
 
     Args:
