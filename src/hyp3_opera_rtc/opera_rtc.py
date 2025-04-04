@@ -16,7 +16,7 @@ def render_runconfig(
     db_name: str,
     dem_name: str,
     config_type: str = 'pge',
-    bursts: Iterable[str] = None,
+    bursts: Optional[Iterable[str]] = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -54,11 +54,11 @@ def render_runconfig(
 
 
 def opera_rtc(
-    granules: Iterable[str],
+    granules: list[str],
     resolution: int = 30,
     burst_subset: Optional[str] = None,
     work_dir: Optional[Path] = None,
-) -> Path:
+) -> None:
     """Prepare data for SLC-based processing.
 
     Args:
@@ -73,7 +73,8 @@ def opera_rtc(
     scratch_dir = work_dir / 'scratch'
     input_dir = work_dir / 'input'
     output_dir = work_dir / 'output'
-    [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
+    for d in [scratch_dir, input_dir, output_dir]:
+        d.mkdir(parents=True, exist_ok=True)
 
     if all([x.endswith('BURST') for x in granules]):
         granule_path, orbit_path, db_path, dem_path = prep_burst(granules, work_dir=input_dir)
@@ -83,36 +84,46 @@ def opera_rtc(
         granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
-    config_args = {
-        'config_path': config_path,
-        'granule_name': granule_path.name,
-        'orbit_name': orbit_path.name,
-        'db_name': db_path.name,
-        'dem_name': dem_path.name,
-        'bursts': burst_subset,
-        'resolution': resolution,
-    }
     pge_present = False
     try:
+        # FIXME: add this module to dependencies so mypy can analyze it?
         from opera.scripts.pge_main import pge_start
 
         pge_present = True
-        config_args['config_type'] = 'pge'
-        render_runconfig(**config_args)
+        render_runconfig(
+            config_path=config_path,
+            granule_name=granule_path.name,
+            orbit_name=orbit_path.name,
+            db_name=db_path.name,
+            dem_name=dem_path.name,
+            config_type='pge',
+            bursts=burst_subset,
+            resolution=resolution,
+        )
         pge_start(str(config_path.resolve()))
     except ImportError:
         print('OPERA PGE script is not present, using OPERA SAS library.')
 
+    # FIXME: should the following try/except block only run if the previous one failed?
     rtc_present = False
     try:
+        # FIXME: add this module to dependencies so mypy can analyze it?
         from rtc.core import create_logger
         from rtc.rtc_s1 import run_parallel
         from rtc.runconfig import RunConfig, load_parameters
 
         rtc_present = True
-        config_args['config_type'] = 'sas'
-        config_args['container_base_path'] = input_dir.parent
-        render_runconfig(**config_args)
+        render_runconfig(
+            config_path=config_path,
+            granule_name=granule_path.name,
+            orbit_name=orbit_path.name,
+            db_name=db_path.name,
+            dem_name=dem_path.name,
+            config_type='sas',
+            bursts=burst_subset,
+            resolution=resolution,
+            container_base_path=input_dir.parent,
+        )
         log_path = str((output_dir / 'rtc.log').resolve())
         create_logger(log_path, full_log_formatting=False)
         cfg = RunConfig.load_from_yaml(str(config_path.resolve()))

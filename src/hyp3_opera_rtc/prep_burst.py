@@ -11,7 +11,7 @@ from hyp3_opera_rtc import dem, orbit, utils
 def prep_burst(
     granules: list[str],
     work_dir: Optional[Path] = None,
-) -> Path:
+) -> tuple[Path, Path, Path, Path]:
     """Prepare data for burst-based processing.
 
     Args:

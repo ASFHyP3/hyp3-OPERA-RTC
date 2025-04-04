@@ -69,6 +69,7 @@ def get_url(granule: str, bucket: str) -> Union[str, None]:
 
 def get_orbit(scene: str, save_dir: Path) -> Path:
     url = get_url(scene, BUCKET)
+    assert url is not None
     orbit_path = save_dir / url.split('/')[-1]
 
     if orbit_path.exists():

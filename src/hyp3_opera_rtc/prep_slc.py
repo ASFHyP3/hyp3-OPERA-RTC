@@ -9,7 +9,7 @@ from hyp3_opera_rtc.orbit import get_orbit
 def prep_slc(
     granule: str,
     work_dir: Optional[Path] = None,
-) -> Path:
+) -> tuple[Path, Path, Path, Path]:
     """Prepare data for SLC-based processing.
 
     Args:

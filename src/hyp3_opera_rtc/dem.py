@@ -28,6 +28,8 @@ def check_antimeridean(poly: Polygon) -> list[Polygon]:
 
         # Split input polygon
         # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
+        # FIXME: mypy flags the following line because `dateline` is the wrong type, confirm that this works
+        #  (ideally via test coverage) before ignoring the warning
         merged_lines = shapely.ops.linemerge([dateline, new_ring])
         border_lines = shapely.ops.unary_union(merged_lines)
         decomp = shapely.ops.polygonize(border_lines)
@@ -91,5 +93,7 @@ def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> P
     gdal.Translate(str(output_path), ds, format='GTiff')
 
     ds = None
-    [Path(f).unlink() for f in input_files + [vrt_filepath]]
+    vrt_filepath.unlink()
+    for f in input_files:
+        Path(f).unlink()
     return output_path

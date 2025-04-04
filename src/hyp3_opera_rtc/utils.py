@@ -12,16 +12,13 @@ def download_file(
     url: str,
     download_path: Union[Path, str] = '.',
     chunk_size: int = 10 * (2**20),
-) -> Path:
+) -> None:
     """Download a file without authentication.
 
     Args:
         url: URL of the file to download
         download_path: Path to save the downloaded file to
         chunk_size: Size to chunk the download into
-
-    Returns:
-        download_path: The path to the downloaded file
     """
     session = requests.Session()
 
@@ -74,11 +71,16 @@ def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
             with z.open(manifest_path) as m:
                 manifest = ET.parse(m).getroot()
     else:
-        manifest_path = granule_path / 'manifest.safe'
+        manifest_path = str(granule_path / 'manifest.safe')
         manifest = ET.parse(manifest_path).getroot()
 
-    frame_element = [x for x in manifest.findall('.//metadataObject') if x.get('ID') == 'measurementFrameSet'][0]
-    frame_string = frame_element.find('.//{http://www.opengis.net/gml}coordinates').text
+    frame_element = next(x for x in manifest.findall('.//metadataObject') if x.get('ID') == 'measurementFrameSet')
+    coords_element = frame_element.find('.//{http://www.opengis.net/gml}coordinates')
+    assert coords_element is not None
+
+    frame_string = coords_element.text
+    assert frame_string is not None
+
     coord_strings = [pair.split(',') for pair in frame_string.split(' ')]
     coords = [(float(lon), float(lat)) for lat, lon in coord_strings]
     footprint = Polygon(coords).buffer(buffer)
