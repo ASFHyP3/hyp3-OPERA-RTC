@@ -5,7 +5,7 @@ import sys
 from importlib.metadata import entry_points
 
 
-def main():
+def main() -> None:
     """Main entrypoint for HyP3 processing.
 
     Calls the HyP3 entrypoint specified by the `++process` argument

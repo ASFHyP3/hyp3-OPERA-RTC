@@ -45,7 +45,7 @@ def prep_burst(
     return granule_path, orbit_path, db_path, dem_path
 
 
-def main():
+def main() -> None:
     """Prep SLC entrypoint.
 
     Example command:

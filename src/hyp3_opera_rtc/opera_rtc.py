@@ -19,7 +19,7 @@ def render_runconfig(
     bursts: Iterable[str] = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
-):
+) -> None:
     input_dir = container_base_path / 'input'
     scratch_dir = container_base_path / 'scratch'
     output_dir = container_base_path / 'output'
@@ -125,7 +125,7 @@ def opera_rtc(
         raise ImportError('Neither the OPERA RTC PGE or SAS modules could be imported.')
 
 
-def main():
+def main() -> None:
     """Create an OPERA RTC.
 
     Example commands:

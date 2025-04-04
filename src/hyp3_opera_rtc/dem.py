@@ -4,6 +4,8 @@ from pathlib import Path
 import earthaccess
 import numpy as np
 import shapely
+import shapely.ops
+import shapely.wkt
 from osgeo import gdal
 from shapely.geometry import LinearRing, Polygon
 
@@ -12,7 +14,7 @@ gdal.UseExceptions()
 URL = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1/EPSG4326'
 
 
-def check_antimeridean(poly):
+def check_antimeridean(poly: Polygon) -> list[Polygon]:
     x_min, _, x_max, _ = poly.bounds
 
     # Check anitmeridean crossing
@@ -69,7 +71,7 @@ def get_latlon_pairs(polygon: Polygon) -> list:
     return list(product(lats, lons))
 
 
-def download_opera_dem_for_footprint(output_path, footprint):
+def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> Path:
     if output_path.exists():
         return output_path
 

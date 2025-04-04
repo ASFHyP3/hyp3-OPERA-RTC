@@ -11,7 +11,7 @@ from shapely.geometry import Polygon, box
 def download_file(
     url: str,
     download_path: Union[Path, str] = '.',
-    chunk_size=10 * (2**20),
+    chunk_size: int = 10 * (2**20),
 ) -> Path:
     """Download a file without authentication.
 
@@ -55,7 +55,7 @@ def download_burst_db(save_dir: Path) -> Path:
     return db_path
 
 
-def download_s1_granule(granule, save_dir: Path) -> Path:
+def download_s1_granule(granule: str, save_dir: Path) -> Path:
     out_path = save_dir / f'{granule}.zip'
     if out_path.exists():
         return out_path
@@ -67,7 +67,7 @@ def download_s1_granule(granule, save_dir: Path) -> Path:
     return out_path
 
 
-def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> box:
+def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
     if granule_path.suffix == '.zip':
         with ZipFile(granule_path, 'r') as z:
             manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]

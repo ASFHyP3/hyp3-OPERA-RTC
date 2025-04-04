@@ -68,7 +68,7 @@ def get_url(granule: str, bucket: str) -> Union[str, None]:
     return None
 
 
-def get_orbit(scene: str, save_dir: Path):
+def get_orbit(scene: str, save_dir: Path) -> Path:
     url = get_url(scene, BUCKET)
     orbit_path = save_dir / url.split('/')[-1]
 
