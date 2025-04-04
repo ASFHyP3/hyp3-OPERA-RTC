@@ -98,3 +98,15 @@ suppress-dummy-args = true
 [tool.ruff.lint.extend-per-file-ignores]
 "*" = ["D1"]
 "tests/*" = ["D1", "ANN"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+strict_equality = true
+check_untyped_defs = true
+install_types = true
+non_interactive = true
+pretty = true
+disable_error_code = ["import-untyped"]
