@@ -45,11 +45,11 @@ def render_runconfig(
         raise ValueError('Config type must be sas or pge.')
 
     template_dir = Path(__file__).parent / 'templates'
-    with open(template_dir / f'{config_type}.yml') as file:
+    with (template_dir / f'{config_type}.yml').open() as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
-    with open(config_path, 'w') as file:
+    with config_path.open('w') as file:
         file.write(template_str)
 
 

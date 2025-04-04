@@ -27,7 +27,7 @@ def download_file(
 
     with session.get(url, stream=True) as s:
         s.raise_for_status()
-        with open(download_path, 'wb') as f:
+        with Path(download_path).open('wb') as f:
             for chunk in s.iter_content(chunk_size=chunk_size):
                 if chunk:
                     f.write(chunk)
