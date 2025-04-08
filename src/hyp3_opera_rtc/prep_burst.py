@@ -16,7 +16,6 @@ def prep_burst(
 
     Args:
         granules: Sentinel-1 burst SLC granules to create RTC dataset for
-        use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
     if work_dir is None:
