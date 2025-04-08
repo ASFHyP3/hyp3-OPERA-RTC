@@ -29,8 +29,7 @@ def check_antimeridean(poly: Polygon) -> list[Polygon]:
         # Split input polygon
         # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
         # FIXME: mypy flags the following line because `dateline` is the wrong type, confirm that this works
-        #  (ideally via test coverage) before ignoring the warning
-        merged_lines = shapely.ops.linemerge([dateline, new_ring])
+        merged_lines = shapely.ops.linemerge([dateline, new_ring])  # type: ignore[list-item]
         border_lines = shapely.ops.unary_union(merged_lines)
         decomp = shapely.ops.polygonize(border_lines)
 

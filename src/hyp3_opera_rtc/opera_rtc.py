@@ -87,7 +87,7 @@ def opera_rtc(
     pge_present = False
     try:
         # FIXME: add this module to dependencies so mypy can analyze it?
-        from opera.scripts.pge_main import pge_start
+        from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
         pge_present = True
         render_runconfig(
@@ -108,9 +108,9 @@ def opera_rtc(
     rtc_present = False
     try:
         # FIXME: add this module to dependencies so mypy can analyze it?
-        from rtc.core import create_logger
-        from rtc.rtc_s1 import run_parallel
-        from rtc.runconfig import RunConfig, load_parameters
+        from rtc.core import create_logger  # type: ignore[import-not-found]
+        from rtc.rtc_s1 import run_parallel  # type: ignore[import-not-found]
+        from rtc.runconfig import RunConfig, load_parameters  # type: ignore[import-not-found]
 
         rtc_present = True
         render_runconfig(
