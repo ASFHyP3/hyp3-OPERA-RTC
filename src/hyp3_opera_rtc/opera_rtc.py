@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from jinja2 import Template
+from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
 from hyp3_opera_rtc.prep_burst import prep_burst
 from hyp3_opera_rtc.prep_slc import prep_slc
@@ -84,56 +85,17 @@ def opera_rtc(
         granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
-    pge_present = False
-    try:
-        # FIXME: add this module to dependencies so mypy can analyze it?
-        from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
-
-        pge_present = True
-        render_runconfig(
-            config_path=config_path,
-            granule_name=granule_path.name,
-            orbit_name=orbit_path.name,
-            db_name=db_path.name,
-            dem_name=dem_path.name,
-            config_type='pge',
-            bursts=burst_subset,
-            resolution=resolution,
-        )
-        pge_start(str(config_path.resolve()))
-    except ImportError:
-        print('OPERA PGE script is not present, using OPERA SAS library.')
-
-    # FIXME: should the following try/except block only run if the previous one failed?
-    rtc_present = False
-    try:
-        # FIXME: add this module to dependencies so mypy can analyze it?
-        from rtc.core import create_logger  # type: ignore[import-not-found]
-        from rtc.rtc_s1 import run_parallel  # type: ignore[import-not-found]
-        from rtc.runconfig import RunConfig, load_parameters  # type: ignore[import-not-found]
-
-        rtc_present = True
-        render_runconfig(
-            config_path=config_path,
-            granule_name=granule_path.name,
-            orbit_name=orbit_path.name,
-            db_name=db_path.name,
-            dem_name=dem_path.name,
-            config_type='sas',
-            bursts=burst_subset,
-            resolution=resolution,
-            container_base_path=input_dir.parent,
-        )
-        log_path = str((output_dir / 'rtc.log').resolve())
-        create_logger(log_path, full_log_formatting=False)
-        cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
-        load_parameters(cfg)
-        run_parallel(cfg, logfile_path=log_path, flag_logger_full_format=False)
-    except ImportError:
-        pass
-
-    if not pge_present and not rtc_present:
-        raise ImportError('Neither the OPERA RTC PGE or SAS modules could be imported.')
+    render_runconfig(
+        config_path=config_path,
+        granule_name=granule_path.name,
+        orbit_name=orbit_path.name,
+        db_name=db_path.name,
+        dem_name=dem_path.name,
+        config_type='pge',
+        bursts=burst_subset,
+        resolution=resolution,
+    )
+    pge_start(str(config_path.resolve()))
 
 
 def main() -> None:
