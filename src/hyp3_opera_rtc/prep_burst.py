@@ -11,12 +11,11 @@ from hyp3_opera_rtc import dem, orbit, utils
 def prep_burst(
     granules: list[str],
     work_dir: Optional[Path] = None,
-) -> Path:
+) -> tuple[Path, Path, Path, Path]:
     """Prepare data for burst-based processing.
 
     Args:
         granules: Sentinel-1 burst SLC granules to create RTC dataset for
-        use_resorb: Use the RESORB orbits instead of the POEORB orbits
         work_dir: Working directory for processing
     """
     if work_dir is None:
@@ -45,7 +44,7 @@ def prep_burst(
     return granule_path, orbit_path, db_path, dem_path
 
 
-def main():
+def main() -> None:
     """Prep SLC entrypoint.
 
     Example command:

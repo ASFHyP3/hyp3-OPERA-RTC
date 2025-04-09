@@ -9,11 +9,11 @@ from hyp3_opera_rtc.orbit import get_orbit
 def prep_slc(
     granule: str,
     work_dir: Optional[Path] = None,
-) -> Path:
+) -> tuple[Path, Path, Path, Path]:
     """Prepare data for SLC-based processing.
 
     Args:
-        granules: Sentinel-1 SLC granule to create RTC datasets for
+        granule: Sentinel-1 SLC granule to create RTC datasets for
         work_dir: Working directory for processing
     """
     if work_dir is None:
@@ -38,7 +38,7 @@ def prep_slc(
     return granule_path, orbit_path, db_path, dem_path
 
 
-def main():
+def main() -> None:
     """Prep SLC entrypoint.
 
     Example command:

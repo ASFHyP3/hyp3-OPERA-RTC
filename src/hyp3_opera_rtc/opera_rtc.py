@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from jinja2 import Template
+from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
 from hyp3_opera_rtc.prep_burst import prep_burst
 from hyp3_opera_rtc.prep_slc import prep_slc
@@ -16,10 +17,10 @@ def render_runconfig(
     db_name: str,
     dem_name: str,
     config_type: str = 'pge',
-    bursts: Iterable[str] = None,
+    bursts: Optional[Iterable[str]] = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
-):
+) -> None:
     input_dir = container_base_path / 'input'
     scratch_dir = container_base_path / 'scratch'
     output_dir = container_base_path / 'output'
@@ -45,20 +46,20 @@ def render_runconfig(
         raise ValueError('Config type must be sas or pge.')
 
     template_dir = Path(__file__).parent / 'templates'
-    with open(template_dir / f'{config_type}.yml') as file:
+    with (template_dir / f'{config_type}.yml').open() as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
-    with open(config_path, 'w') as file:
+    with config_path.open('w') as file:
         file.write(template_str)
 
 
 def opera_rtc(
-    granules: Iterable[str],
+    granules: list[str],
     resolution: int = 30,
     burst_subset: Optional[str] = None,
     work_dir: Optional[Path] = None,
-) -> Path:
+) -> None:
     """Prepare data for SLC-based processing.
 
     Args:
@@ -73,7 +74,8 @@ def opera_rtc(
     scratch_dir = work_dir / 'scratch'
     input_dir = work_dir / 'input'
     output_dir = work_dir / 'output'
-    [d.mkdir(parents=True, exist_ok=True) for d in [scratch_dir, input_dir, output_dir]]
+    for d in [scratch_dir, input_dir, output_dir]:
+        d.mkdir(parents=True, exist_ok=True)
 
     if all([x.endswith('BURST') for x in granules]):
         granule_path, orbit_path, db_path, dem_path = prep_burst(granules, work_dir=input_dir)
@@ -83,50 +85,21 @@ def opera_rtc(
         granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
-    config_args = {
-        'config_path': config_path,
-        'granule_name': granule_path.name,
-        'orbit_name': orbit_path.name,
-        'db_name': db_path.name,
-        'dem_name': dem_path.name,
-        'bursts': burst_subset,
-        'resolution': resolution,
-    }
-    pge_present = False
-    try:
-        from opera.scripts.pge_main import pge_start
-
-        pge_present = True
-        config_args['config_type'] = 'pge'
-        render_runconfig(**config_args)
-        pge_start(str(config_path.resolve()))
-    except ImportError:
-        print('OPERA PGE script is not present, using OPERA SAS library.')
-
-    rtc_present = False
-    try:
-        from rtc.core import create_logger
-        from rtc.rtc_s1 import run_parallel
-        from rtc.runconfig import RunConfig, load_parameters
-
-        rtc_present = True
-        config_args['config_type'] = 'sas'
-        config_args['container_base_path'] = input_dir.parent
-        render_runconfig(**config_args)
-        log_path = str((output_dir / 'rtc.log').resolve())
-        create_logger(log_path, full_log_formatting=False)
-        cfg = RunConfig.load_from_yaml(str(config_path.resolve()))
-        load_parameters(cfg)
-        run_parallel(cfg, logfile_path=log_path, flag_logger_full_format=False)
-    except ImportError:
-        pass
-
-    if not pge_present and not rtc_present:
-        raise ImportError('Neither the OPERA RTC PGE or SAS modules could be imported.')
+    render_runconfig(
+        config_path=config_path,
+        granule_name=granule_path.name,
+        orbit_name=orbit_path.name,
+        db_name=db_path.name,
+        dem_name=dem_path.name,
+        config_type='pge',
+        bursts=burst_subset,
+        resolution=resolution,
+    )
+    pge_start(str(config_path.resolve()))
 
 
-def main():
-    """Create an OPERA RTC
+def main() -> None:
+    """Create an OPERA RTC.
 
     Example commands:
     python -m hyp3_opera_rtc ++process opera_rtc \

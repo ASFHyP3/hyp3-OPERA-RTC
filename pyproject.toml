@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyp3_opera_rtc"
-requires-python = "~=3.9"
+requires-python = ">=3.9,<3.10"
 authors = [
     {name="tools-bot", email="UAF-asf-apd@alaska.edu"},
 ]
@@ -39,6 +39,7 @@ develop = [
     "pytest-cov",
     "pytest-console-scripts",
     "ruff",
+    "mypy",
 ]
 
 [project.urls]
@@ -80,10 +81,9 @@ quote-style = "single"
 extend-select = [
     "I",   # isort: https://docs.astral.sh/ruff/rules/#isort-i
     "UP",  # pyupgrade: https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    # TODO: Uncomment the following extensions and address their warnings:
-    # "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
-    # "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
-    # "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+    "D",   # pydocstyle: https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    "ANN", # annotations: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+    "PTH", # use-pathlib-pth: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -92,3 +92,22 @@ convention = "google"
 [tool.ruff.lint.isort]
 case-sensitive = true
 lines-after-imports = 2
+
+[tool.ruff.lint.flake8-annotations]
+suppress-dummy-args = true
+
+[tool.ruff.lint.extend-per-file-ignores]
+"*" = ["D1"]
+"tests/*" = ["D1", "ANN"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+strict_equality = true
+check_untyped_defs = true
+install_types = true
+non_interactive = true
+pretty = true
+disable_error_code = ["import-untyped"]

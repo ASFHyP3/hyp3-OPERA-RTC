@@ -4,6 +4,8 @@ from pathlib import Path
 import earthaccess
 import numpy as np
 import shapely
+import shapely.ops
+import shapely.wkt
 from osgeo import gdal
 from shapely.geometry import LinearRing, Polygon
 
@@ -12,7 +14,7 @@ gdal.UseExceptions()
 URL = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1/EPSG4326'
 
 
-def check_antimeridean(poly):
+def check_antimeridean(poly: Polygon) -> list[Polygon]:
     x_min, _, x_max, _ = poly.bounds
 
     # Check anitmeridean crossing
@@ -26,7 +28,8 @@ def check_antimeridean(poly):
 
         # Split input polygon
         # (https://gis.stackexchange.com/questions/232771/splitting-polygon-by-linestring-in-geodjango_)
-        merged_lines = shapely.ops.linemerge([dateline, new_ring])
+        # FIXME: mypy flags the following line because `dateline` is the wrong type, confirm that this works
+        merged_lines = shapely.ops.linemerge([dateline, new_ring])  # type: ignore[list-item]
         border_lines = shapely.ops.unary_union(merged_lines)
         decomp = shapely.ops.polygonize(border_lines)
 
@@ -69,7 +72,7 @@ def get_latlon_pairs(polygon: Polygon) -> list:
     return list(product(lats, lons))
 
 
-def download_opera_dem_for_footprint(output_path, footprint):
+def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> Path:
     if output_path.exists():
         return output_path
 
@@ -89,5 +92,7 @@ def download_opera_dem_for_footprint(output_path, footprint):
     gdal.Translate(str(output_path), ds, format='GTiff')
 
     ds = None
-    [Path(f).unlink() for f in input_files + [vrt_filepath]]
+    vrt_filepath.unlink()
+    for f in input_files:
+        Path(f).unlink()
     return output_path

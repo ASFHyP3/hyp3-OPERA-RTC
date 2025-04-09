@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Union
@@ -52,7 +51,7 @@ def get_orbit_for_granule(granule: str, bucket: str, orbit_type: str) -> Union[s
 
     keys = list_bucket(bucket=bucket, prefix=f'{orbit_type}/{platform}')
     for key in keys:
-        filename = os.path.basename(key)
+        filename = Path(key).name
         orbit_start_date = filename[42:57]
         orbit_end_date = filename[58:73]
         if orbit_start_date <= granule_start_date <= granule_end_date <= orbit_end_date:
@@ -68,8 +67,9 @@ def get_url(granule: str, bucket: str) -> Union[str, None]:
     return None
 
 
-def get_orbit(scene: str, save_dir: Path):
+def get_orbit(scene: str, save_dir: Path) -> Path:
     url = get_url(scene, BUCKET)
+    assert url is not None
     orbit_path = save_dir / url.split('/')[-1]
 
     if orbit_path.exists():

@@ -29,6 +29,5 @@ dependencies:
   - pytest
   - pytest-console-scripts
   - pytest-cov
-  - ruff
   - pip:
-    - rtc@git+https://github.com/opera-adt/RTC.git@v1.0.2
+    - -r requirements-static.txt
