@@ -118,7 +118,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    username, password = os.environ('EARTHDATA_USERNAME'), os.environ('EARTHDATA_PASSWORD')
+    username, password = os.environ['EARTHDATA_USERNAME'], os.environ['EARTHDATA_PASSWORD']
     write_credentials_to_netrc_file(username, password)
 
     opera_rtc(**args.__dict__)

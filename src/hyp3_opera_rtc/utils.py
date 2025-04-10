@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Union
 from zipfile import ZipFile
 
-import earthaccess
+import earthaccess  # type: ignore[import-not-found]
 import lxml.etree as ET
 import requests
 from shapely.geometry import Polygon, box
