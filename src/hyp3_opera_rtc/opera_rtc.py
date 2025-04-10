@@ -1,15 +1,15 @@
 import argparse
+import os
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
-import os
 
+from hyp3lib.fetch import write_credentials_to_netrc_file
 from jinja2 import Template
 from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
 from hyp3_opera_rtc.prep_burst import prep_burst
 from hyp3_opera_rtc.prep_slc import prep_slc
-from hyp3lib.fetch import write_credentials_to_netrc_file
 
 
 def render_runconfig(
