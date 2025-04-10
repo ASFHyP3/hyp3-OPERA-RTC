@@ -2,12 +2,14 @@ import argparse
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
+import os
 
 from jinja2 import Template
 from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
 from hyp3_opera_rtc.prep_burst import prep_burst
 from hyp3_opera_rtc.prep_slc import prep_slc
+from hyp3lib.fetch import write_credentials_to_netrc_file
 
 
 def render_runconfig(
@@ -115,6 +117,9 @@ def main() -> None:
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
     args = parser.parse_args()
+
+    username, password = os.environ('EARTHDATA_USERNAME'), os.environ('EARTHDATA_PASSWORD')
+    write_credentials_to_netrc_file(username, password)
 
     opera_rtc(**args.__dict__)
 
