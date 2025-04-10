@@ -1,11 +1,13 @@
+from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-import earthaccess
 import numpy as np
 import shapely
 import shapely.ops
 import shapely.wkt
+from hyp3lib.fetch import download_file
 from osgeo import gdal
 from shapely.geometry import LinearRing, Polygon
 
@@ -73,26 +75,18 @@ def get_latlon_pairs(polygon: Polygon) -> list:
 
 
 def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> Path:
-    if output_path.exists():
-        return output_path
-
-    output_dir = output_path.parent
     footprints = check_antimeridean(footprint)
     latlon_pairs = []
     for footprint in footprints:
         latlon_pairs += get_latlon_pairs(footprint)
     urls = [get_dem_granule_url(lat, lon) for lat, lon in latlon_pairs]
 
-    earthaccess.download(urls, str(output_dir), threads=8)
-
-    vrt_filepath = output_dir / 'dem.vrt'
-    input_files = [str(output_dir / Path(url).name) for url in urls]
-    gdal.BuildVRT(str(output_dir / 'dem.vrt'), input_files)
-    ds = gdal.Open(str(vrt_filepath), gdal.GA_ReadOnly)
-    gdal.Translate(str(output_path), ds, format='GTiff')
-
-    ds = None
-    vrt_filepath.unlink()
-    for f in input_files:
-        Path(f).unlink()
+    with TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            executor.map(lambda url: download_file(url, str(tmpdir)), urls)
+        vrt_filepath = str(tmpdir / 'dem.vrt')
+        input_files = [str(file) for file in tmpdir.glob('*.tif')]
+        gdal.BuildVRT(vrt_filepath, input_files)
+        gdal.Translate(str(output_path), vrt_filepath, format='GTiff')
     return output_path
