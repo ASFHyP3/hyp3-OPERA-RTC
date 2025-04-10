@@ -23,8 +23,6 @@ dependencies = [
     "numpy",
     "shapely",
     "boto3",
-    "earthaccess",
-    "s1reader",
     "requests",
     "urllib3",
     "lxml",
@@ -111,3 +109,4 @@ install_types = true
 non_interactive = true
 pretty = true
 disable_error_code = ["import-untyped"]
+exclude = ['/build/']
