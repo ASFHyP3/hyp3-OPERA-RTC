@@ -20,4 +20,4 @@ dependencies:
   - pytest-console-scripts
   - pytest-cov
   - pip:
-    - -r requirements-static.txt
+    - -e .[develop]

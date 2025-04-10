@@ -36,8 +36,11 @@ develop = [
     "pytest",
     "pytest-cov",
     "pytest-console-scripts",
-    "ruff",
-    "mypy",
+    "ruff==0.11.4",
+    "mypy==1.15.0",
+    "lxml-stubs",
+    "types-shapely",
+    "types-requests",
 ]
 
 [project.urls]

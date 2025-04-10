@@ -81,8 +81,8 @@ def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> P
         latlon_pairs += get_latlon_pairs(footprint)
     urls = [get_dem_granule_url(lat, lon) for lat, lon in latlon_pairs]
 
-    with TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
+    with TemporaryDirectory() as tmpdir_str:
+        tmpdir = Path(tmpdir_str)
         with ThreadPoolExecutor(max_workers=4) as executor:
             executor.map(lambda url: download_file(url, str(tmpdir)), urls)
         vrt_filepath = str(tmpdir / 'dem.vrt')
