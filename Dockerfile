@@ -1,5 +1,4 @@
-# FROM 845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1:2.1.1
-FROM opera_pge/rtc_s1:2.1.1
+FROM 845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1:2.1.1
 
 # For opencontainers label definitions, see:
 #    https://github.com/opencontainers/image-spec/blob/master/annotations.md
@@ -16,7 +15,6 @@ USER root
 RUN chown rtc_user:rtc_user /home/rtc_user/scratch
 USER rtc_user
 
-WORKDIR /home/rtc_user
 COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
 RUN conda env create -f /home/rtc_user/hyp3-opera-rtc/environment.yml && \
     conda clean -afy && \
