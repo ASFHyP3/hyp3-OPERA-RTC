@@ -1,4 +1,5 @@
-FROM 845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1:2.1.1
+# FROM 845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1:2.1.1
+FROM opera_pge/rtc_s1:2.1.1
 
 # For opencontainers label definitions, see:
 #    https://github.com/opencontainers/image-spec/blob/master/annotations.md
@@ -19,8 +20,8 @@ WORKDIR /home/rtc_user
 COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
 RUN conda env create -f /home/rtc_user/hyp3-opera-rtc/environment.yml && \
     conda clean -afy && \
-    sed -i 's/conda activate RTC/conda activate hyp3-opera-rtc/g' /home/rtc_user/.bashrc
-RUN python -m pip install --no-cache-dir /home/rtc_user/hyp3-opera-rtc
+    sed -i 's/conda activate RTC/conda activate hyp3-opera-rtc/g' /home/rtc_user/.bashrc && \
+    conda run -n hyp3-opera-rtc python -m pip install --no-cache-dir /home/rtc_user/hyp3-opera-rtc
 
 ENTRYPOINT ["/home/rtc_user/hyp3-opera-rtc/src/hyp3_opera_rtc/etc/entrypoint.sh"]
 CMD ["-h"]
