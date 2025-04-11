@@ -4,13 +4,15 @@ channels:
   - nodefaults
 dependencies:
   # For running
-  - python>=3.9,<3.10 # restriction to match the python version of OPERA PGE
+  - python
+  - git
   - pip
   - gdal>=3.0
   - shapely
   - hyp3lib
   - boto3
   - jinja2
+  - hyp3lib
   - burst2safe
   # For packaging, and testing
   - setuptools
@@ -19,5 +21,3 @@ dependencies:
   - pytest
   - pytest-console-scripts
   - pytest-cov
-  - pip:
-    - -e .[develop]

@@ -11,12 +11,16 @@ LABEL org.opencontainers.image.url="https://github.com/ASFHyP3/hyp3-OPERA-RTC"
 LABEL org.opencontainers.image.source="https://github.com/ASFHyP3/hyp3-OPERA-RTC"
 LABEL org.opencontainers.image.documentation="https://hyp3-docs.asf.alaska.edu"
 
-RUN conda install -c conda-forge -y git
+USER root
+RUN chown rtc_user:rtc_user /home/rtc_user/scratch
+USER rtc_user
+
+WORKDIR /home/rtc_user
 COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
-RUN python -m pip install --no-cache-dir boto3
-RUN python -m pip install --no-cache-dir --no-deps hyp3lib
-# FIXME: --user probably isn't the right solution here
-RUN python -m pip install --user --no-cache-dir /home/rtc_user/hyp3-opera-rtc/
+RUN conda env create -f /home/rtc_user/hyp3-opera-rtc/environment.yml && \
+    conda clean -afy && \
+    sed -i 's/conda activate RTC/conda activate hyp3-opera-rtc/g' /home/rtc_user/.bashrc
+RUN python -m pip install --no-cache-dir /home/rtc_user/hyp3-opera-rtc
 
 ENTRYPOINT ["/home/rtc_user/hyp3-opera-rtc/src/hyp3_opera_rtc/etc/entrypoint.sh"]
 CMD ["-h"]

@@ -6,7 +6,6 @@ from typing import Optional
 
 from hyp3lib.fetch import write_credentials_to_netrc_file
 from jinja2 import Template
-from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
 from hyp3_opera_rtc.prep_burst import prep_burst
 from hyp3_opera_rtc.prep_slc import prep_slc
@@ -97,7 +96,9 @@ def opera_rtc(
         bursts=burst_subset,
         resolution=resolution,
     )
-    pge_start(str(config_path.resolve()))
+    # FIXME: Add back in later
+    # from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
+    # pge_start(str(config_path.resolve()))
 
 
 def main() -> None:

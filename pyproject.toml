@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyp3_opera_rtc"
-requires-python = ">=3.9,<3.10"
+requires-python = ">=3.10"
 authors = [
     {name="tools-bot", email="UAF-asf-apd@alaska.edu"},
 ]
