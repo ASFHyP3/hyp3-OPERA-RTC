@@ -1,10 +1,7 @@
 import argparse
-import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Optional
 
-from hyp3lib.fetch import write_credentials_to_netrc_file
 from jinja2 import Template
 
 from hyp3_opera_rtc.prep_burst import prep_burst
@@ -18,7 +15,7 @@ def render_runconfig(
     db_name: str,
     dem_name: str,
     config_type: str = 'pge',
-    bursts: Optional[Iterable[str]] = None,
+    bursts: Iterable[str] | None = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -58,8 +55,8 @@ def render_runconfig(
 def opera_rtc(
     granules: list[str],
     resolution: int = 30,
-    burst_subset: Optional[str] = None,
-    work_dir: Optional[Path] = None,
+    burst_subset: str | None = None,
+    work_dir: Path | None = None,
 ) -> None:
     """Prepare data for SLC-based processing.
 
@@ -117,10 +114,10 @@ def main() -> None:
     parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
-    args = parser.parse_args()
+    parser.add_argument('--bucket', help='AWS S3 bucket HyP3 uses for uploading the final products')
+    parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
 
-    username, password = os.environ['EARTHDATA_USERNAME'], os.environ['EARTHDATA_PASSWORD']
-    write_credentials_to_netrc_file(username, password)
+    args = parser.parse_args()
 
     opera_rtc(**args.__dict__)
 
