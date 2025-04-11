@@ -112,4 +112,3 @@ install_types = true
 non_interactive = true
 pretty = true
 disable_error_code = ["import-untyped"]
-exclude = ['/build/']
