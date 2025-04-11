@@ -2,7 +2,6 @@ import argparse
 import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Optional
 
 from hyp3lib.fetch import write_credentials_to_netrc_file
 from jinja2 import Template
@@ -18,7 +17,7 @@ def render_runconfig(
     db_name: str,
     dem_name: str,
     config_type: str = 'pge',
-    bursts: Optional[Iterable[str]] = None,
+    bursts: Iterable[str] | None = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -58,8 +57,8 @@ def render_runconfig(
 def opera_rtc(
     granules: list[str],
     resolution: int = 30,
-    burst_subset: Optional[str] = None,
-    work_dir: Optional[Path] = None,
+    burst_subset: str | None = None,
+    work_dir: Path | None = None,
 ) -> None:
     """Prepare data for SLC-based processing.
 

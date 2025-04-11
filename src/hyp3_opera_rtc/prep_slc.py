@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-from typing import Optional
 
 from hyp3_opera_rtc import dem, utils
 from hyp3_opera_rtc.orbit import get_orbit
@@ -8,7 +7,7 @@ from hyp3_opera_rtc.orbit import get_orbit
 
 def prep_slc(
     granule: str,
-    work_dir: Optional[Path] = None,
+    work_dir: Path | None = None,
 ) -> tuple[Path, Path, Path, Path]:
     """Prepare data for SLC-based processing.
 

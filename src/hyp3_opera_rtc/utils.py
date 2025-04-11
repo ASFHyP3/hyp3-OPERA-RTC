@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Union
 from zipfile import ZipFile
 
 import lxml.etree as ET
@@ -10,7 +9,7 @@ from shapely.geometry import Polygon, box
 
 def download_file(
     url: str,
-    download_path: Union[Path, str] = '.',
+    download_path: Path | str = '.',
     chunk_size: int = 10 * (2**20),
 ) -> None:
     """Download a file without authentication.
