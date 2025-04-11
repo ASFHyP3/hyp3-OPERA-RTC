@@ -24,7 +24,7 @@ you'll need to authenticate to Amazon ECR in the HyP3 AWS account before buildin
 (you must be an ASF developer with access to the HyP3 AWS account):
 
 ```
-aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 845172464411.dkr.ecr.us-west-2.amazonaws.com
+aws --profile hyp3 ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 845172464411.dkr.ecr.us-west-2.amazonaws.com
 ```
 
 Then build our container:
