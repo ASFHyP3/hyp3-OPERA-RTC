@@ -17,12 +17,12 @@ jobs:
     with:
       local_package_name: hyp3_opera_rtc
       python_versions: >-
-        ["3.9"]
+        ["3.10", "3.11", "3.12", "3.13"]
 
   call-version-info-workflow:
     uses: ASFHyP3/actions/.github/workflows/reusable-version-info.yml@v0.18.0
     with:
-      python_version: '3.9'
+      python_version: '3.10'
 
   call-docker-ecr-workflow:
     needs: call-version-info-workflow

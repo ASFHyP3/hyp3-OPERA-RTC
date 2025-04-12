@@ -4,7 +4,7 @@ channels:
   - nodefaults
 dependencies:
   # For running
-  - python
+  - python>=3.10
   - git
   - pip
   - gdal>=3.0
@@ -12,7 +12,6 @@ dependencies:
   - hyp3lib
   - boto3
   - jinja2
-  - hyp3lib
   - burst2safe
   # For packaging, and testing
   - setuptools
@@ -22,3 +21,5 @@ dependencies:
   - pytest
   - pytest-console-scripts
   - pytest-cov
+  - pip:
+    - -r requirements-static.txt

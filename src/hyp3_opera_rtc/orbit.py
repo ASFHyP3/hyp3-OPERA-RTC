@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Union
 
 import boto3
 from botocore import UNSIGNED
@@ -44,7 +43,7 @@ def list_bucket(bucket: str, prefix: str) -> list[str]:
     return keys
 
 
-def get_orbit_for_granule(granule: str, bucket: str, orbit_type: str) -> Union[str, None]:
+def get_orbit_for_granule(granule: str, bucket: str, orbit_type: str) -> str | None:
     platform = granule[0:3]
     granule_start_date = datetime.strftime(datetime.strptime(granule[17:32], FMT) - MARGIN_START_TIME, FMT)
     granule_end_date = datetime.strftime(datetime.strptime(granule[33:48], FMT) + PADDING_SHORT, FMT)
@@ -59,7 +58,7 @@ def get_orbit_for_granule(granule: str, bucket: str, orbit_type: str) -> Union[s
     return None
 
 
-def get_url(granule: str, bucket: str) -> Union[str, None]:
+def get_url(granule: str, bucket: str) -> str | None:
     for orbit_type in ['AUX_POEORB', 'AUX_RESORB']:
         key = get_orbit_for_granule(granule, bucket, orbit_type)
         if key:
