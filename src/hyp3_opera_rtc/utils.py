@@ -2,32 +2,8 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import lxml.etree as ET
-import requests
 from hyp3lib import fetch
 from shapely.geometry import Polygon, box
-
-
-def download_file(
-    url: str,
-    download_path: Path | str = '.',
-    chunk_size: int = 10 * (2**20),
-) -> None:
-    """Download a file without authentication.
-
-    Args:
-        url: URL of the file to download
-        download_path: Path to save the downloaded file to
-        chunk_size: Size to chunk the download into
-    """
-    session = requests.Session()
-
-    with session.get(url, stream=True) as s:
-        s.raise_for_status()
-        with Path(download_path).open('wb') as f:
-            for chunk in s.iter_content(chunk_size=chunk_size):
-                if chunk:
-                    f.write(chunk)
-    session.close()
 
 
 def download_burst_db(save_dir: Path) -> Path:
@@ -47,7 +23,7 @@ def download_burst_db(save_dir: Path) -> Path:
         return db_path
 
     url = 'https://ffwilliams2-shenanigans.s3.us-west-2.amazonaws.com/opera/opera-burst-bbox-only.sqlite3'
-    download_file(url, db_path)
+    db_path = fetch.download_file(url, str(save_dir))
     return db_path
 
 
