@@ -1,8 +1,8 @@
 #!/bin/bash --login
+set -e
 
-# Taken from OPERA PGE entrypoint
-DOCKER_ENTRYPOINT_SCRIPT_DIR=$(dirname ${BASH_SOURCE[0]})
-PGE_PROGRAM_DIR=${PGE_DEST_DIR}
-export PYTHONPATH=$PYTHONPATH:${PGE_PROGRAM_DIR}
+# Make the PGE "opera" package discoverable because it is not installed
+export PYTHONPATH=$PYTHONPATH:${PGE_DEST_DIR}
 
-exec python -um hyp3_opera_rtc "$@"
+python -um hyp3_opera_rtc "$@" --work-dir scratch
+conda run -n RTC /home/rtc_user/opera/scripts/pge_main.py -f /home/rtc_user/scratch/runconfig.yml
