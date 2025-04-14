@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyp3_opera_rtc"
-requires-python = ">=3.9,<3.10"
+requires-python = ">=3.10"
 authors = [
     {name="tools-bot", email="UAF-asf-apd@alaska.edu"},
 ]
@@ -16,15 +16,16 @@ classifiers=[
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "gdal",
     "numpy",
     "shapely",
     "boto3",
-    "earthaccess",
-    "s1reader",
     "requests",
     "urllib3",
     "lxml",
@@ -49,7 +50,7 @@ Documentation = "https://hyp3-docs.asf.alaska.edu"
 [project.entry-points.hyp3]
 prep_burst = "hyp3_opera_rtc.prep_burst:main"
 prep_slc = "hyp3_opera_rtc.prep_slc:main"
-opera_rtc = "hyp3_opera_rtc.opera_rtc:main"
+prep_rtc = "hyp3_opera_rtc.prep_rtc:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -101,7 +102,7 @@ suppress-dummy-args = true
 "tests/*" = ["D1", "ANN"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_unreachable = true

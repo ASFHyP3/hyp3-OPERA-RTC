@@ -1,10 +1,10 @@
 import argparse
+import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Optional
 
+from hyp3lib.fetch import write_credentials_to_netrc_file
 from jinja2 import Template
-from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
 
 from hyp3_opera_rtc.prep_burst import prep_burst
 from hyp3_opera_rtc.prep_slc import prep_slc
@@ -17,7 +17,7 @@ def render_runconfig(
     db_name: str,
     dem_name: str,
     config_type: str = 'pge',
-    bursts: Optional[Iterable[str]] = None,
+    bursts: Iterable[str] | None = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -54,16 +54,16 @@ def render_runconfig(
         file.write(template_str)
 
 
-def opera_rtc(
+def prep_rtc(
     granules: list[str],
     resolution: int = 30,
-    burst_subset: Optional[str] = None,
-    work_dir: Optional[Path] = None,
+    burst_subset: str | None = None,
+    work_dir: Path | None = None,
 ) -> None:
-    """Prepare data for SLC-based processing.
+    """Prepare data for OPERA RTC processing.
 
     Args:
-        granules: List of Sentinel-1 level-1 granules to back-project
+        granules: List of Sentinel-1 level-1 granules (Full SLC or Burst SLC) to back-project
         resolution: Resolution of the output RTC (m)
         burst_subset: List of JPL burst ids to process
         work_dir: Working directory for processing
@@ -95,7 +95,6 @@ def opera_rtc(
         bursts=burst_subset,
         resolution=resolution,
     )
-    pge_start(str(config_path.resolve()))
 
 
 def main() -> None:
@@ -114,9 +113,12 @@ def main() -> None:
     parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
-    opera_rtc(**args.__dict__)
+    username, password = os.environ['EARTHDATA_USERNAME'], os.environ['EARTHDATA_PASSWORD']
+    write_credentials_to_netrc_file(username, password)
+
+    prep_rtc(**args.__dict__)
 
 
 if __name__ == '__main__':

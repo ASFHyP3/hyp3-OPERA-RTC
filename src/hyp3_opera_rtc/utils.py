@@ -1,16 +1,15 @@
 from pathlib import Path
-from typing import Union
 from zipfile import ZipFile
 
-import earthaccess
 import lxml.etree as ET
 import requests
+from hyp3lib import fetch
 from shapely.geometry import Polygon, box
 
 
 def download_file(
     url: str,
-    download_path: Union[Path, str] = '.',
+    download_path: Path | str = '.',
     chunk_size: int = 10 * (2**20),
 ) -> None:
     """Download a file without authentication.
@@ -60,7 +59,9 @@ def download_s1_granule(granule: str, save_dir: Path) -> Path:
     mission = granule[0] + granule[2]
     product_type = granule[7:10]
     url = f'https://sentinel1.asf.alaska.edu/{product_type}/{mission}/{granule}.zip'
-    earthaccess.download(url, str(save_dir))
+
+    fetch.download_file(url, str(save_dir))
+
     return out_path
 
 
