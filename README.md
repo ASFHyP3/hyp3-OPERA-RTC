@@ -47,7 +47,7 @@ docker run -it --rm \
 
 Where you replace `S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31` with the name of the Sentinel-1 SLC scene to generate OPERA RTC granules for, and `t115_245714_iw1` with the JPL burst IDs you'd like to process.
 
-All options for a give process can be explored by calling `docker run -it --rm hyp3-opera-rtc:latest ++process [PROCESS] --help`.
+All options for a given process can be explored by calling `docker run -it --rm hyp3-opera-rtc:latest ++process [PROCESS] --help`.
 
 ## Architecture
 
