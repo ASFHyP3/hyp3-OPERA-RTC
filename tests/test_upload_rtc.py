@@ -17,7 +17,7 @@ def test_upload_rtc(rtc_results_dir, s3_bucket):
 
     resp = aws.S3_CLIENT.list_objects_v2(Bucket=s3_bucket, Prefix=prefix)
 
-    assert len(resp['Contents']) == 8
+    assert len(resp['Contents']) == 9
 
 
 @pytest.fixture
@@ -26,6 +26,7 @@ def rtc_results_dir(tmp_path):
         'OPERA_L2_RTC-S1_20250411T185446Z_S1A_30_v1.0.catalog.json',
         'OPERA_L2_RTC-S1_20250411T185446Z_S1A_30_v1.0.log',
         'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
+        'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE_THUMBNAIL.png',
         'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
         'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
         'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
