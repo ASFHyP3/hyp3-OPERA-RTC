@@ -54,16 +54,16 @@ def render_runconfig(
         file.write(template_str)
 
 
-def opera_rtc(
+def prep_rtc(
     granules: list[str],
     resolution: int = 30,
     burst_subset: str | None = None,
     work_dir: Path | None = None,
 ) -> None:
-    """Prepare data for SLC-based processing.
+    """Prepare data for OPERA RTC processing.
 
     Args:
-        granules: List of Sentinel-1 level-1 granules to back-project
+        granules: List of Sentinel-1 level-1 granules (Full SLC or Burst SLC) to back-project
         resolution: Resolution of the output RTC (m)
         burst_subset: List of JPL burst ids to process
         work_dir: Working directory for processing
@@ -95,9 +95,6 @@ def opera_rtc(
         bursts=burst_subset,
         resolution=resolution,
     )
-    # FIXME: Add back in later
-    # from opera.scripts.pge_main import pge_start  # type: ignore[import-not-found]
-    # pge_start(str(config_path.resolve()))
 
 
 def main() -> None:
@@ -116,12 +113,12 @@ def main() -> None:
     parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     username, password = os.environ['EARTHDATA_USERNAME'], os.environ['EARTHDATA_PASSWORD']
     write_credentials_to_netrc_file(username, password)
 
-    opera_rtc(**args.__dict__)
+    prep_rtc(**args.__dict__)
 
 
 if __name__ == '__main__':
