@@ -13,8 +13,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prefix_chars='+', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '++process',
-        choices=['prep_burst', 'prep_slc', 'opera_rtc'],
-        default='opera_rtc',
+        choices=['prep_burst', 'prep_slc', 'prep_rtc'],
         help='Select the HyP3 entrypoint to use',  # HyP3 entrypoints are specified in `pyproject.toml`
     )
 
