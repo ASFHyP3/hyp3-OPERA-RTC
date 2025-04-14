@@ -9,9 +9,6 @@ runconfig:
             # Required. List of SAFE files (min=1)
             safe_file_path:
                 - {{  granule_path  }}
-            # Optional. Burst ID to process (empty for all bursts)
-            burst_id: {% if bursts %}{% for item in bursts %}
-                - {{ item }}{% endfor %}{% endif %}
             # Required. List of orbit (EOF) files (min=1)
             orbit_file_path:
                 - {{  orbit_path  }}
