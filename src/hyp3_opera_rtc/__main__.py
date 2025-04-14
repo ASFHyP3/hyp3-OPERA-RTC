@@ -1,4 +1,5 @@
 """OPERA-RTC processing for HyP3."""
+
 import argparse
 import os
 import sys
