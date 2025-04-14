@@ -29,7 +29,9 @@ def main() -> None:
     parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
     parser.add_argument('--work-dir', type=Path, default=Path(), help='directory with processing outputs')
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
-    upload_rtc(**args.__dict__)
-    print(args)
+    if not args.bucket:
+        print('No bucket provided, skipping upload')
+    else:
+        upload_rtc(**args.__dict__)
