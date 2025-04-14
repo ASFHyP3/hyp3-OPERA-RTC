@@ -42,10 +42,12 @@ docker run -it --rm \
     -e EARTHDATA_USERNAME=[YOUR_USERNAME_HERE] \
     -e EARTHDATA_PASSWORD=[YOUR_PASSWORD_HERE] \
     hyp3-opera-rtc:latest ++process prep_rtc \
-    S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --burst-subset t115_245714_iw1 
+    S1_073251_IW2_20250413T020809_VV_EF1E-BURST S1_073251_IW2_20250413T020809_VH_EF1E-BURST 
 ```
 
-Where you replace `S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31` with the name of the Sentinel-1 SLC scene to generate OPERA RTC granules for, and `t115_245714_iw1` with the JPL burst IDs you'd like to process.
+Where you replace `S1_073251_IW2_20250413T020809_VV_EF1E-BURST S1_073251_IW2_20250413T020809_VH_EF1E-BURST` with the name of the Sentinel-1 burst SLC scenes to generate OPERA RTC granules for.
+
+**Input burst SLCs must be from the same satellite pass and be continuous, otherwise the workflow will fail.**
 
 All options for a given process can be explored by calling `docker run -it --rm hyp3-opera-rtc:latest ++process [PROCESS] --help`.
 
