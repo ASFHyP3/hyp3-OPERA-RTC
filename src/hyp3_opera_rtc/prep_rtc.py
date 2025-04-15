@@ -90,7 +90,7 @@ def main() -> None:
     burst2safe is used to create a custom Sentinel-1 SAFE SLC for the input burst granules.
 
     Example commands:
-    python -m hyp3_opera_rtc ++process opera_rtc \
+    python -m hyp3_opera_rtc ++process prep_rtc \
         S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
