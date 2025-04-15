@@ -4,8 +4,7 @@ from pathlib import Path
 import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
-
-from hyp3_opera_rtc.utils import download_file
+from hyp3lib.fetch import download_file
 
 
 s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
@@ -74,5 +73,5 @@ def get_orbit(scene: str, save_dir: Path) -> Path:
     if orbit_path.exists():
         return orbit_path
 
-    download_file(url, orbit_path)
-    return orbit_path
+    orbit_path = download_file(url, str(save_dir))
+    return Path(orbit_path)

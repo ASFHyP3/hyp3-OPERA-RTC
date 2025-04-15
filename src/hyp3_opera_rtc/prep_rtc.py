@@ -1,11 +1,9 @@
 import argparse
-from collections.abc import Iterable
 from pathlib import Path
 
 from jinja2 import Template
 
 from hyp3_opera_rtc.prep_burst import prep_burst
-from hyp3_opera_rtc.prep_slc import prep_slc
 
 
 def render_runconfig(
@@ -15,7 +13,6 @@ def render_runconfig(
     db_name: str,
     dem_name: str,
     config_type: str = 'pge',
-    bursts: Iterable[str] | None = None,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -37,8 +34,6 @@ def render_runconfig(
         'output_dir': str(output_dir),
         'resolution': int(resolution),
     }
-    if bursts is not None:
-        runconfig_dict['bursts'] = [b.lower() for b in bursts]
 
     if config_type not in ['sas', 'pge']:
         raise ValueError('Config type must be sas or pge.')
@@ -55,15 +50,13 @@ def render_runconfig(
 def prep_rtc(
     granules: list[str],
     resolution: int = 30,
-    burst_subset: str | None = None,
     work_dir: Path | None = None,
 ) -> None:
     """Prepare data for OPERA RTC processing.
 
     Args:
-        granules: List of Sentinel-1 level-1 granules (Full SLC or Burst SLC) to back-project
+        granules: List of Sentinel-1 level-1 Burst granule to compile data for
         resolution: Resolution of the output RTC (m)
-        burst_subset: List of JPL burst ids to process
         work_dir: Working directory for processing
     """
     if work_dir is None:
@@ -75,12 +68,7 @@ def prep_rtc(
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    if all([x.endswith('BURST') for x in granules]):
-        granule_path, orbit_path, db_path, dem_path = prep_burst(granules, work_dir=input_dir)
-    else:
-        if len(granules) > 1:
-            raise ValueError('Only one granule is supported for SLC processing')
-        granule_path, orbit_path, db_path, dem_path = prep_slc(granules[0], work_dir=input_dir)
+    granule_path, orbit_path, db_path, dem_path = prep_burst(granules, work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
     render_runconfig(
@@ -90,25 +78,22 @@ def prep_rtc(
         db_name=db_path.name,
         dem_name=dem_path.name,
         config_type='pge',
-        bursts=burst_subset,
         resolution=resolution,
     )
 
 
 def main() -> None:
-    """Create an OPERA RTC.
+    """Stage the data nessecary to create an OPERA RTC.
+
+    burst2safe is used to create a custom Sentinel-1 SAFE SLC for the input burst granules.
 
     Example commands:
-    python -m hyp3_opera_rtc ++process opera_rtc \
-        S1A_IW_SLC__1SDV_20240809T141630_20240809T141657_055137_06B825_6B31 --burst-subset t115_245714_iw1
-
-    python -m hyp3_opera_rtc ++process opera_rtc \
+    python -m hyp3_opera_rtc ++process prep_rtc \
         S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granules', nargs='+', help='S1 granule to create an RTC for.')
+    parser.add_argument('granules', nargs='+', help='Sentinel-1 burst granules to download input data for.')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
-    parser.add_argument('--burst-subset', nargs='+', type=str, help='JPL burst ids to process')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
     args, _ = parser.parse_known_args()

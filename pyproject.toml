@@ -49,7 +49,6 @@ Documentation = "https://hyp3-docs.asf.alaska.edu"
 
 [project.entry-points.hyp3]
 prep_burst = "hyp3_opera_rtc.prep_burst:main"
-prep_slc = "hyp3_opera_rtc.prep_slc:main"
 prep_rtc = "hyp3_opera_rtc.prep_rtc:main"
 upload_rtc = "hyp3_opera_rtc.upload_rtc:main"
 
