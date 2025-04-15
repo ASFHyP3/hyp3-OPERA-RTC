@@ -24,7 +24,7 @@ def download_burst_db(save_dir: Path) -> Path:
 
     url = 'https://ffwilliams2-shenanigans.s3.us-west-2.amazonaws.com/opera/opera-burst-bbox-only.sqlite3'
     db_path = fetch.download_file(url, str(save_dir))
-    return db_path
+    return Path(db_path)
 
 
 def download_s1_granule(granule: str, save_dir: Path) -> Path:
