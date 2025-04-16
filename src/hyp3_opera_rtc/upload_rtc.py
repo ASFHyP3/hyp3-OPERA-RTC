@@ -25,7 +25,7 @@ def main() -> None:
         --bucket-prefix myPrefix
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--bucket', required=True, help='AWS S3 bucket HyP3 uses for uploading the final products')
+    parser.add_argument('--bucket', help='AWS S3 bucket HyP3 uses for uploading the final products')
     parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
     parser.add_argument('--work-dir', type=Path, default=Path(), help='directory with processing outputs')
 
