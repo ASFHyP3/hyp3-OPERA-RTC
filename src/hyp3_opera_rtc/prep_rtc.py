@@ -1,8 +1,6 @@
 import argparse
-import os
 from pathlib import Path
 
-from hyp3lib.fetch import write_credentials_to_netrc_file
 from jinja2 import Template
 
 from hyp3_opera_rtc.prep_burst import prep_burst
@@ -99,9 +97,6 @@ def main() -> None:
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
     args, _ = parser.parse_known_args()
-
-    username, password = os.environ['EARTHDATA_USERNAME'], os.environ['EARTHDATA_PASSWORD']
-    write_credentials_to_netrc_file(username, password)
 
     prep_rtc(**args.__dict__)
 
