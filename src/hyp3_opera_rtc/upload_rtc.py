@@ -22,7 +22,7 @@ def make_zip(output_files: list[Path], work_dir: Path) -> Path:
         copyfile(output_file, zip_archive_path / output_file.name)
 
     zip_path = work_dir / make_zip_name(output_files)
-    output_zip = make_archive(base_name=zip_path, format='zip', root_dir=zip_archive_path)
+    output_zip = make_archive(base_name=str(zip_path), format='zip', root_dir=zip_archive_path)
 
     return Path(output_zip)
 
