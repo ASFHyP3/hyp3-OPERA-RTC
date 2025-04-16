@@ -51,4 +51,5 @@ def main() -> None:
     if not args.bucket:
         print('No bucket provided, skipping upload')
     else:
+        print(f'Uploading outputs to {args.bucket}')
         upload_rtc(**args.__dict__)
