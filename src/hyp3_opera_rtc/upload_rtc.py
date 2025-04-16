@@ -1,19 +1,36 @@
 import argparse
 from pathlib import Path
+from shutil import copyfile, make_archive
 
 from hyp3lib.aws import upload_file_to_s3
-from hyp3lib.image import create_thumbnail
 
 
 def upload_rtc(bucket: str, bucket_prefix: str, work_dir: Path) -> None:
-    for browse in work_dir.glob('*.png'):
-        create_thumbnail(browse, output_dir=work_dir)
+    output_files = [f for f in work_dir.iterdir() if not f.is_dir()]
 
-    for product_file in work_dir.iterdir():
-        if product_file.is_dir():
-            continue
+    output_zip = make_zip(output_files, work_dir)
 
-        upload_file_to_s3(product_file, bucket, bucket_prefix)
+    for output_file in output_files + [output_zip]:
+        upload_file_to_s3(output_file, bucket, bucket_prefix)
+
+
+def make_zip(output_files: list[Path], work_dir: Path) -> Path:
+    zip_archive_path = work_dir / 'zip'
+    zip_archive_path.mkdir(exist_ok=True)
+
+    for output_file in output_files:
+        copyfile(output_file, zip_archive_path / output_file.name)
+
+    zip_path = work_dir / make_zip_name(output_files)
+    output_zip = make_archive(base_name=zip_path, format='zip', root_dir=zip_archive_path)
+
+    return Path(output_zip)
+
+
+def make_zip_name(product_files: list[Path]) -> str:
+    h5_file = [f for f in product_files if f.name.endswith('h5')].pop()
+
+    return h5_file.name.split('.h5')[0]
 
 
 def main() -> None:
