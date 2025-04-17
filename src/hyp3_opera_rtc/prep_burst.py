@@ -20,9 +20,13 @@ def prep_burst(
     if work_dir is None:
         work_dir = Path.cwd()
 
+    # TODO: error if any cross-pol granules
+
     print('Downloading data...')
 
+    # TODO: do we still want to allow for caching the zip file?
     if len(list(work_dir.glob('S1*.zip'))) == 0:
+        # TODO: add cross-pol granules to list passed to burst2safe
         granule_path = burst2safe(granules=granules, all_anns=True, work_dir=work_dir)
         make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
         granule = granule_path.with_suffix('').name
@@ -30,6 +34,7 @@ def prep_burst(
     else:
         granule_path = work_dir / list(work_dir.glob('S1*.zip'))[0].name
 
+    # TODO: do we still want to allow for caching the EOF file?
     if len(list(work_dir.glob('*.EOF'))) == 0:
         orbit_path = orbit.get_orbit(granule, save_dir=work_dir)
     else:
