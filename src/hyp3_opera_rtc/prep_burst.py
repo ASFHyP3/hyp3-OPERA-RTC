@@ -49,19 +49,23 @@ def prep_burst(
     if work_dir is None:
         work_dir = Path.cwd()
 
-    print('Downloading data...')
-
     cross_pol_granules = get_cross_pol_granules(granules)
+    print(f'Found {len(cross_pol_granules)} cross-pol granules: {cross_pol_granules}')
+
     safe_path = burst2safe(granules=granules + cross_pol_granules, all_anns=True, work_dir=work_dir)
-    zip_path = make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path))
+    zip_path = Path(make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path)))
+    print(f'Created archive: {zip_path}')
 
     orbit_path = orbit.get_orbit(safe_path.with_suffix('').name, save_dir=work_dir)
+    print(f'Downloaded orbit file: {orbit_path}')
 
     db_path = utils.download_burst_db(work_dir)
+    print(f'Downloaded burst database: {db_path}')
 
     dem_path = work_dir / 'dem.tif'
     granule_bbox = utils.get_s1_granule_bbox(zip_path)
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
+    print(f'Downloaded DEM: {dem_path}')
 
     return zip_path, orbit_path, db_path, dem_path
 
