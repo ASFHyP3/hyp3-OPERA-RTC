@@ -20,9 +20,7 @@ def main() -> None:
         --bucket-prefix myPrefix
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        'granules', nargs='+', help='Sentinel-1 VV burst granules to download input data for.'
-    )
+    parser.add_argument('granules', nargs='+', help='Sentinel-1 VV burst granules to download input data for.')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
     parser.add_argument('--bucket', help='AWS S3 bucket HyP3 uses for uploading the final products')
@@ -47,9 +45,13 @@ def main() -> None:
     prep_rtc(args.granules, args.work_dir, args.resolution)
 
     cmd = [
-        'conda', 'run', '-n', 'RTC',
+        'conda',
+        'run',
+        '-n',
+        'RTC',
         '/home/rtc_user/opera/scripts/pge_main.py',
-        '-f', '/home/rtc_user/scratch/runconfig.yml'
+        '-f',
+        '/home/rtc_user/scratch/runconfig.yml',
     ]
     subprocess.run(cmd, check=True)
 
