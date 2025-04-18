@@ -1,29 +1,34 @@
-"""OPERA-RTC processing for HyP3."""
-
 import argparse
 import os
-import sys
+import subprocess
 import warnings
-from importlib.metadata import entry_points
 from pathlib import Path
 
 from hyp3lib.fetch import write_credentials_to_netrc_file
 
+from hyp3_opera_rtc.prep_rtc import prep_rtc
+from hyp3_opera_rtc.upload_rtc import upload_rtc
+
 
 def main() -> None:
-    """Main entrypoint for HyP3 processing.
+    """Prepare, processes and upload results for OPERA RTC.
 
-    Calls the HyP3 entrypoint specified by the `++process` argument
+    Example commands:
+    python -m hyp3_opera_rtc \
+        S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
+        --bucket myBucket \
+        --bucket-prefix myPrefix
     """
-    parser = argparse.ArgumentParser(prefix_chars='+', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        '++process',
-        choices=['prep_burst', 'prep_slc', 'prep_rtc', 'upload_rtc'],
-        help='Select the HyP3 entrypoint to use',  # HyP3 entrypoints are specified in `pyproject.toml`
+        'granules', nargs='+', help='Sentinel-1 VV burst granules to download input data for.'
     )
+    parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
+    parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
+    parser.add_argument('--bucket', help='AWS S3 bucket HyP3 uses for uploading the final products')
+    parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
 
-    args, unknowns = parser.parse_known_args()
-    hyp3_entry_points = entry_points(group='hyp3', name=args.process)
+    args = parser.parse_args()
 
     username = os.getenv('EARTHDATA_USERNAME')
     password = os.getenv('EARTHDATA_PASSWORD')
@@ -36,14 +41,23 @@ def main() -> None:
             UserWarning,
         )
 
-    if not hyp3_entry_points:
-        print(f'No entry point found for {args.process}')
-        sys.exit(1)
+    if args.work_dir is None:
+        args.work_dir = Path.cwd()
 
-    process_entry_point = list(hyp3_entry_points)[0]
+    prep_rtc(args.granules, args.work_dir, args.resolution)
 
-    sys.argv = [args.process, *unknowns]
-    sys.exit(process_entry_point.load()())
+    cmd = [
+        'conda', 'run', '-n', 'RTC',
+        '/home/rtc_user/opera/scripts/pge_main.py',
+        '-f', '/home/rtc_user/scratch/runconfig.yml'
+    ]
+    subprocess.run(cmd, check=True)
+
+    if not args.bucket:
+        print('No bucket provided, skipping upload')
+    else:
+        print(f'Uploading outputs to {args.bucket}')
+        upload_rtc(args.bucket, args.bucket_prefix, args.work_dir / 'output')
 
 
 if __name__ == '__main__':

@@ -1,4 +1,3 @@
-import argparse
 from pathlib import Path
 
 from jinja2 import Template
@@ -49,8 +48,8 @@ def render_runconfig(
 
 def prep_rtc(
     granules: list[str],
+    work_dir: Path,
     resolution: int = 30,
-    work_dir: Path | None = None,
 ) -> None:
     """Prepare data for OPERA RTC processing.
 
@@ -59,9 +58,6 @@ def prep_rtc(
         resolution: Resolution of the output RTC (m)
         work_dir: Working directory for processing
     """
-    if work_dir is None:
-        work_dir = Path.cwd()
-
     scratch_dir = work_dir / 'scratch'
     input_dir = work_dir / 'input'
     output_dir = work_dir / 'output'
@@ -80,26 +76,3 @@ def prep_rtc(
         config_type='pge',
         resolution=resolution,
     )
-
-
-def main() -> None:
-    """Stage the data nessecary to create an OPERA RTC.
-
-    burst2safe is used to create a custom Sentinel-1 SAFE SLC for the input burst granules.
-
-    Example commands:
-    python -m hyp3_opera_rtc ++process prep_rtc \
-        S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
-    """
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granules', nargs='+', help='Sentinel-1 burst granules to download input data for.')
-    parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
-    parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
-
-    args, _ = parser.parse_known_args()
-
-    prep_rtc(**args.__dict__)
-
-
-if __name__ == '__main__':
-    main()
