@@ -8,19 +8,6 @@ from burst2safe.burst2safe import burst2safe
 from hyp3_opera_rtc import dem, orbit, utils
 
 
-def validate_co_pol_granules(granules: list[str]) -> None:
-    for granule in granules:
-        pol = granule.split('_')[4]
-        if pol not in {'VV', 'HH'}:
-            raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-
-
-def get_cross_pol_granule_name(granule: str) -> str:
-    parts = granule.split('_')
-    parts[4] = {'VV': 'VH', 'HH': 'HV'}[parts[4]]
-    return '_'.join(parts)
-
-
 def granule_exists(granule: str) -> bool:
     url = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
     params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
@@ -29,16 +16,24 @@ def granule_exists(granule: str) -> bool:
     return bool(response.json()['items'])
 
 
+def get_cross_pol_name(granule: str) -> str:
+    parts = granule.split('_')
+    pol = parts[4]
+    if pol not in {'VV', 'HH'}:
+        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
+    parts[4] = {'VV': 'VH', 'HH': 'HV'}[pol]
+    return '_'.join(parts)
+
+
 def get_cross_pol_granules(granules: list[str]) -> list[str]:
-    cross_pol_granules = []
-    for granule in granules:
-        # TODO: should we assume that the co-pol granule exists, or confirm that it does?
-        #  it should fail at burst2safe if doesn't exist, right?
-        cross_pol_granule = get_cross_pol_granule_name(granule)
-        if not granule_exists(cross_pol_granule):
-            raise ValueError(f'Cross-pol granule {cross_pol_granule} for co-pol granule {granule} does not exist')
-        cross_pol_granules.append(cross_pol_granule)
-    return cross_pol_granules
+    cross_pol_granules = [get_cross_pol_name(granule) for granule in granules]
+    existing_cross_pol_granules = []
+    for co_pol_granule, cross_pol_granule in zip(granules, cross_pol_granules):
+        if not granule_exists(co_pol_granule):
+            raise ValueError(f'Granule does not exist: {co_pol_granule}')
+        if granule_exists(cross_pol_granule):
+            existing_cross_pol_granules.append(cross_pol_granule)
+    return existing_cross_pol_granules
 
 
 def prep_burst(
@@ -54,33 +49,21 @@ def prep_burst(
     if work_dir is None:
         work_dir = Path.cwd()
 
-    validate_co_pol_granules(granules)
-
     print('Downloading data...')
 
-    # TODO: do we still want to allow for caching the zip file?
-    if len(list(work_dir.glob('S1*.zip'))) == 0:
-        cross_pol_granules = get_cross_pol_granules(granules)
-        # TODO: add cross-pol granules to list passed to burst2safe; does order matter?
-        granule_path = burst2safe(granules=granules, all_anns=True, work_dir=work_dir)
-        make_archive(base_name=str(granule_path.with_suffix('')), format='zip', base_dir=str(granule_path))
-        granule = granule_path.with_suffix('').name
-        granule_path = granule_path.with_suffix('.zip')
-    else:
-        granule_path = work_dir / list(work_dir.glob('S1*.zip'))[0].name
+    cross_pol_granules = get_cross_pol_granules(granules)
+    safe_path = burst2safe(granules=granules + cross_pol_granules, all_anns=True, work_dir=work_dir)
+    zip_path = make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path))
 
-    # TODO: do we still want to allow for caching the EOF file?
-    if len(list(work_dir.glob('*.EOF'))) == 0:
-        orbit_path = orbit.get_orbit(granule, save_dir=work_dir)
-    else:
-        orbit_path = work_dir / list(work_dir.glob('*.EOF'))[0].name
+    orbit_path = orbit.get_orbit(safe_path.with_suffix('').name, save_dir=work_dir)
 
     db_path = utils.download_burst_db(work_dir)
 
     dem_path = work_dir / 'dem.tif'
-    granule_bbox = utils.get_s1_granule_bbox(granule_path)
+    granule_bbox = utils.get_s1_granule_bbox(zip_path)
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
-    return granule_path, orbit_path, db_path, dem_path
+
+    return zip_path, orbit_path, db_path, dem_path
 
 
 def main() -> None:

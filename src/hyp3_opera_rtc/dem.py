@@ -74,7 +74,7 @@ def get_latlon_pairs(polygon: Polygon) -> list:
     return list(product(lats, lons))
 
 
-def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> Path:
+def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> None:
     footprints = check_antimeridean(footprint)
     latlon_pairs = []
     for footprint in footprints:
@@ -89,4 +89,3 @@ def download_opera_dem_for_footprint(output_path: Path, footprint: Polygon) -> P
         input_files = [str(file) for file in tmpdir.glob('*.tif')]
         gdal.BuildVRT(vrt_filepath, input_files)
         gdal.Translate(str(output_path), vrt_filepath, format='GTiff')
-    return output_path
