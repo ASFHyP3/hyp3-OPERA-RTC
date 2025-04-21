@@ -87,7 +87,7 @@ def main() -> None:
 
     Example commands:
     python -m hyp3_opera_rtc.prep_rtc \
-        S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
+        S1_245714_IW1_20240809T141633_VV_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='Sentinel-1 co-pol burst granules to download input data for.')
