@@ -91,8 +91,8 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('granules', nargs='+', help='Sentinel-1 VV burst granules to download input data for.')
+    parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
-    parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
     args, _ = parser.parse_known_args()
 
@@ -106,9 +106,6 @@ def main() -> None:
             'Earthdata credentials must be present as environment variables, or in your netrc.',
             UserWarning,
         )
-
-    if args.work_dir is None:
-        args.work_dir = Path.cwd()
 
     prep_rtc(args.granules, args.work_dir, args.resolution)
 

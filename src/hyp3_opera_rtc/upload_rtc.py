@@ -42,14 +42,11 @@ def main() -> None:
         --bucket-prefix myPrefix
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--output-dir', type=Path, default=None, help='Working directory for processing')
+    parser.add_argument('--output-dir', type=Path, required=True, help='Directory containing processing outputs')
     parser.add_argument('--bucket', help='AWS S3 bucket HyP3 uses for uploading the final products')
     parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
 
     args, _ = parser.parse_known_args()
-
-    if args.output_dir is None:
-        args.output_dir = Path.cwd()
 
     if not args.bucket:
         print('No bucket provided, skipping upload')
