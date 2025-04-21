@@ -13,6 +13,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - capability to stage data for a burst OPERA RTC run
 - capability to run OPERA RTC from within docker container
 - Added an `upload_rtc` processing step that takes a bucket and bucket prefix and upload results to s3
+- Remove `__main__.py` and use of `++process` in favor of invoking submodules
 
 ### Changed
 - The [`static-analysis`](.github/workflows/static-analysis.yml) Github Actions workflow now uses `ruff` rather than `flake8` for linting.
