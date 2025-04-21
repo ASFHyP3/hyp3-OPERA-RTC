@@ -77,23 +77,3 @@ def prep_burst(
     print(f'Downloaded DEM: {dem_path}')
 
     return zip_path, orbit_path, db_path, dem_path
-
-
-def main() -> None:
-    """Prep SLC entrypoint.
-
-    Example command:
-    python -m hyp3_opera_rtc ++process prep_burst \
-        S1_136231_IW2_20200604T022312_VV_7C85-BURST S1_136231_IW2_20200604T022312_VH_7C85-BURST
-    """
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granules', nargs='+', help='S1 burst granules to load data for.')
-    parser.add_argument('--work-dir', default=None, help='Working directory for processing')
-
-    args = parser.parse_args()
-
-    prep_burst(**args.__dict__)
-
-
-if __name__ == '__main__':
-    main()
