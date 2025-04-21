@@ -19,8 +19,7 @@ def granule_exists(granule: str) -> bool:
 
 def validate_co_pol_granules(granules: list[str]) -> None:
     for granule in granules:
-        parts = granule.split('_')
-        pol = parts[4]
+        pol = granule.split('_')[4]
         if pol not in {'VV', 'HH'}:
             raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
         if not granule_exists(granule):
@@ -34,12 +33,11 @@ def get_cross_pol_name(granule: str) -> str:
 
 
 def get_cross_pol_granules(co_pol_granules: list[str]) -> list[str]:
-    cross_pol_granules = []
-    for co_pol_granule in co_pol_granules:
-        cross_pol_granule = get_cross_pol_name(co_pol_granule)
-        if granule_exists(cross_pol_granule):
-            cross_pol_granules.append(cross_pol_granule)
-    return cross_pol_granules
+    return [
+        cross_pol_granule
+        for granule in co_pol_granules
+        if granule_exists(cross_pol_granule := get_cross_pol_name(granule))
+    ]
 
 
 def prep_burst(
