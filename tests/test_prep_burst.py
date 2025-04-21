@@ -1,8 +1,41 @@
 import unittest.mock
 
 import pytest
+import requests
+import responses
 
 from hyp3_opera_rtc import prep_burst
+
+
+@responses.activate
+def test_granule_exists():
+    responses.get(
+        url=prep_burst.CMR_URL,
+        match=[
+            responses.matchers.query_param_matcher(
+                {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'S1_073251_IW2_20250413T020809_VV_EF1E-BURST'}
+            )
+        ],
+        json={'items': ['foo']},
+    )
+    responses.get(
+        url=prep_burst.CMR_URL,
+        match=[
+            responses.matchers.query_param_matcher(
+                {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'S1_073251_IW2_20250413T020809_VH_EF1E-BURST'}
+            )
+        ],
+        json={'items': []},
+    )
+    responses.get(
+        url=prep_burst.CMR_URL,
+        match=[responses.matchers.query_param_matcher({'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'foo'})],
+        status=400,
+    )
+    assert prep_burst.granule_exists('S1_073251_IW2_20250413T020809_VV_EF1E-BURST')
+    assert not prep_burst.granule_exists('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
+    with pytest.raises(requests.HTTPError):
+        prep_burst.granule_exists('foo')
 
 
 def test_get_cross_pol_name():

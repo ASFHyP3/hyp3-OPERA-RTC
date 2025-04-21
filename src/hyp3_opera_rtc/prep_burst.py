@@ -8,10 +8,12 @@ from burst2safe.burst2safe import burst2safe
 from hyp3_opera_rtc import dem, orbit, utils
 
 
+CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
+
+
 def granule_exists(granule: str) -> bool:
-    url = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
     params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
-    response = requests.get(url, params=params)
+    response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
     return bool(response.json()['items'])
 
