@@ -90,7 +90,7 @@ def main() -> None:
         S1_245714_IW1_20240809T141633_VV_6B31-BURST S1_245714_IW1_20240809T141633_VH_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('granules', nargs='+', help='Sentinel-1 VV burst granules to download input data for.')
+    parser.add_argument('granules', nargs='+', help='Sentinel-1 co-pol burst granules to download input data for.')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
     parser.add_argument('--work-dir', type=Path, default=None, help='Working directory for processing')
 
