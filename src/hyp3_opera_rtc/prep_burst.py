@@ -18,19 +18,24 @@ def granule_exists(granule: str) -> bool:
     return bool(response.json()['items'])
 
 
+def validate_co_pol_granules(granules: list[str]) -> None:
+    for granule in granules:
+        parts = granule.split('_')
+        pol = parts[4]
+        if pol not in {'VV', 'HH'}:
+            raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
+
+
 def get_cross_pol_name(granule: str) -> str:
     parts = granule.split('_')
-    pol = parts[4]
-    if pol not in {'VV', 'HH'}:
-        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    parts[4] = {'VV': 'VH', 'HH': 'HV'}[pol]
+    parts[4] = {'VV': 'VH', 'HH': 'HV'}[parts[4]]
     return '_'.join(parts)
 
 
-def get_cross_pol_granules(granules: list[str]) -> list[str]:
-    cross_pol_granules = [get_cross_pol_name(granule) for granule in granules]
+def get_cross_pol_granules(co_pol_granules: list[str]) -> list[str]:
+    cross_pol_granules = [get_cross_pol_name(granule) for granule in co_pol_granules]
     existing_cross_pol_granules = []
-    for co_pol_granule, cross_pol_granule in zip(granules, cross_pol_granules):
+    for co_pol_granule, cross_pol_granule in zip(co_pol_granules, cross_pol_granules):
         if not granule_exists(co_pol_granule):
             raise ValueError(f'Granule does not exist: {co_pol_granule}')
         if granule_exists(cross_pol_granule):
@@ -39,22 +44,24 @@ def get_cross_pol_granules(granules: list[str]) -> list[str]:
 
 
 def prep_burst(
-    granules: list[str],
+    co_pol_granules: list[str],
     work_dir: Path | None = None,
 ) -> tuple[Path, Path, Path, Path]:
     """Prepare data for burst-based processing.
 
     Args:
-        granules: Sentinel-1 burst SLC co-pol granules to create RTC dataset for
+        co_pol_granules: Sentinel-1 burst SLC co-pol granules to create RTC dataset for
         work_dir: Working directory for processing
     """
     if work_dir is None:
         work_dir = Path.cwd()
 
-    cross_pol_granules = get_cross_pol_granules(granules)
+    validate_co_pol_granules(co_pol_granules)
+
+    cross_pol_granules = get_cross_pol_granules(co_pol_granules)
     print(f'Found {len(cross_pol_granules)} cross-pol granules: {cross_pol_granules}')
 
-    safe_path = burst2safe(granules=granules + cross_pol_granules, all_anns=True, work_dir=work_dir)
+    safe_path = burst2safe(granules=co_pol_granules + cross_pol_granules, all_anns=True, work_dir=work_dir)
     zip_path = Path(make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path)))
     print(f'Created archive: {zip_path}')
 
