@@ -46,25 +46,26 @@ def test_validate_co_pol_granules():
         [
             'S1_146160_IW1_20241029T095958_VV_592B-BURST',
             'S1_152193_IW3_20250415T143714_HH_EF65-BURST',
-
         ]
     )
-    with pytest.raises(ValueError, match=r'^S1_073251_IW2_20250413T020809_VH_EF1E-BURST has polarization VH, must be VV or HH'):
+    with pytest.raises(
+        ValueError, match=r'^S1_073251_IW2_20250413T020809_VH_EF1E-BURST has polarization VH, must be VV or HH'
+    ):
         prep_burst.validate_co_pol_granules(
             [
                 'S1_146160_IW1_20241029T095958_VV_592B-BURST',
                 'S1_152193_IW3_20250415T143714_HH_EF65-BURST',
                 'S1_073251_IW2_20250413T020809_VH_EF1E-BURST',
-
             ]
         )
-    with pytest.raises(ValueError, match=r'^S1_241258_IW1_20250418T105137_HV_57A0-BURST has polarization HV, must be VV or HH'):
+    with pytest.raises(
+        ValueError, match=r'^S1_241258_IW1_20250418T105137_HV_57A0-BURST has polarization HV, must be VV or HH'
+    ):
         prep_burst.validate_co_pol_granules(
             [
                 'S1_146160_IW1_20241029T095958_VV_592B-BURST',
                 'S1_152193_IW3_20250415T143714_HH_EF65-BURST',
                 'S1_241258_IW1_20250418T105137_HV_57A0-BURST',
-
             ]
         )
 
@@ -78,9 +79,7 @@ def test_get_cross_pol_name():
         prep_burst.get_cross_pol_name('S1_241258_IW1_20250418T105137_HH_57A0-BURST')
         == 'S1_241258_IW1_20250418T105137_HV_57A0-BURST'
     )
-    with pytest.raises(
-        KeyError, match=r"^'VH'$"
-    ):
+    with pytest.raises(KeyError, match=r"^'VH'$"):
         prep_burst.get_cross_pol_name('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
 
 
