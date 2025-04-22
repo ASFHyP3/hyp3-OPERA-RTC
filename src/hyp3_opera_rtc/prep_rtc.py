@@ -15,6 +15,7 @@ def render_runconfig(
     orbit_name: str,
     db_name: str,
     dem_name: str,
+    dual_pol: bool,
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -34,6 +35,7 @@ def render_runconfig(
         'dem_path': str(dem_path),
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
+        'dual_pol': dual_pol,
         'resolution': int(resolution),
     }
 
@@ -64,7 +66,7 @@ def prep_rtc(
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    granule_path, orbit_path, db_path, dem_path = prep_burst(co_pol_granule, work_dir=input_dir)
+    granule_path, orbit_path, db_path, dem_path, dual_pol = prep_burst(co_pol_granule, work_dir=input_dir)
 
     config_path = work_dir / 'runconfig.yml'
     render_runconfig(
@@ -73,6 +75,7 @@ def prep_rtc(
         orbit_name=orbit_path.name,
         db_name=db_path.name,
         dem_name=dem_path.name,
+        dual_pol=dual_pol,
         resolution=resolution,
     )
 

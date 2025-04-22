@@ -34,7 +34,7 @@ def get_cross_pol_name(granule: str) -> str:
 def prep_burst(
     co_pol_granule: str,
     work_dir: Path | None = None,
-) -> tuple[Path, Path, Path, Path]:
+) -> tuple[Path, Path, Path, Path, bool]:
     """Prepare data for burst-based processing.
 
     Args:
@@ -47,7 +47,8 @@ def prep_burst(
     validate_co_pol_granule(co_pol_granule)
 
     cross_pol_granule = get_cross_pol_name(co_pol_granule)
-    if granule_exists(cross_pol_granule):
+    dual_pol = granule_exists(cross_pol_granule)
+    if dual_pol:
         print(f'Found cross-pol granule: {cross_pol_granule}')
         granules = [co_pol_granule, cross_pol_granule]
     else:
@@ -69,4 +70,4 @@ def prep_burst(
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
     print(f'Downloaded DEM: {dem_path}')
 
-    return zip_path, orbit_path, db_path, dem_path
+    return zip_path, orbit_path, db_path, dem_path, dual_pol
