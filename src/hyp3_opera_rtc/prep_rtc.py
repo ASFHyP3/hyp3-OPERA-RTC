@@ -40,7 +40,7 @@ def render_runconfig(
     }
 
     template_dir = Path(__file__).parent / 'templates'
-    with (template_dir / 'pge.yml').open() as file:
+    with (template_dir / 'pge.yml.j2').open() as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
