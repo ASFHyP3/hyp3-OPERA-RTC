@@ -90,8 +90,8 @@ def prep_rtc(
 
     Args:
         co_pol_granule: Sentinel-1 level-1 co-pol burst granule
-        resolution: Resolution of the output RTC (m)
         work_dir: Working directory for processing
+        resolution: Resolution of the output RTC (m)
     """
     scratch_dir = work_dir / 'scratch'
     input_dir = work_dir / 'input'
