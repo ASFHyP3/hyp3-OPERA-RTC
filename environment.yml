@@ -18,6 +18,7 @@ dependencies:
   - setuptools_scm
   - wheel
   - moto[s3]
+  - responses
   - pytest
   - pytest-console-scripts
   - pytest-cov
