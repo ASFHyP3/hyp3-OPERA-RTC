@@ -50,7 +50,7 @@ for which to generate the OPERA RTC product.
 Here are some useful examples:
 
 - `S1_146160_IW1_20241029T095958_VV_592B-BURST`: generates a VV product
-- `S1_073251_IW2_20250413T020809_VV_EF1E-BURST`: generates a VV+VH
+- `S1_073251_IW2_20250413T020809_VV_EF1E-BURST`: generates a VV+VH product
 - `S1_152193_IW3_20250415T143714_HH_EF65-BURST`: generates an HH product
 - `S1_241258_IW1_20250418T105137_HH_57A0-BURST`: generates an HH+HV product
 
