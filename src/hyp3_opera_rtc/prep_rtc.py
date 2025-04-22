@@ -15,7 +15,6 @@ def render_runconfig(
     orbit_name: str,
     db_name: str,
     dem_name: str,
-    config_type: str = 'pge',
     resolution: int = 30,
     container_base_path: Path = Path('/home/rtc_user/scratch'),
 ) -> None:
@@ -38,11 +37,8 @@ def render_runconfig(
         'resolution': int(resolution),
     }
 
-    if config_type not in ['sas', 'pge']:
-        raise ValueError('Config type must be sas or pge.')
-
     template_dir = Path(__file__).parent / 'templates'
-    with (template_dir / f'{config_type}.yml').open() as file:
+    with (template_dir / 'pge.yml').open() as file:
         template = Template(file.read())
         template_str = template.render(runconfig_dict)
 
@@ -77,7 +73,6 @@ def prep_rtc(
         orbit_name=orbit_path.name,
         db_name=db_path.name,
         dem_name=dem_path.name,
-        config_type='pge',
         resolution=resolution,
     )
 

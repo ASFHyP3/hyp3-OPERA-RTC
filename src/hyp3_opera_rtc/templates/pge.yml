@@ -207,7 +207,9 @@ RunConfig:
                         check_ancillary_inputs_coverage: True
 
                         # Polarization channels to process.
-                        polarization: dual-pol
+                        # TODO: need to dynamically choose between these?
+                        #polarization: dual-pol
+                        polarization: single-pol
 
                         rtc:
                             output_type: gamma0
