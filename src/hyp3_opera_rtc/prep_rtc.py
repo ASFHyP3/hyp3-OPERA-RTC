@@ -31,14 +31,10 @@ def download_burst_db(save_dir: Path) -> Path:
 
 
 def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
-    if granule_path.suffix == '.zip':
-        with ZipFile(granule_path, 'r') as z:
-            manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
-            with z.open(manifest_path) as m:
-                manifest = ET.parse(m).getroot()
-    else:
-        manifest_path = str(granule_path / 'manifest.safe')
-        manifest = ET.parse(manifest_path).getroot()
+    with ZipFile(granule_path, 'r') as z:
+        manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
+        with z.open(manifest_path) as m:
+            manifest = ET.parse(m).getroot()
 
     frame_element = next(x for x in manifest.findall('.//metadataObject') if x.get('ID') == 'measurementFrameSet')
     coords_element = frame_element.find('.//{http://www.opengis.net/gml}coordinates')
