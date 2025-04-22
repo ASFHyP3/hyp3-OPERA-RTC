@@ -207,7 +207,7 @@ RunConfig:
                         check_ancillary_inputs_coverage: True
 
                         # Polarization channels to process.
-                        polarization: dual-pol
+                        polarization: {{ 'dual-pol' if dual_pol else 'co-pol' }}
 
                         rtc:
                             output_type: gamma0

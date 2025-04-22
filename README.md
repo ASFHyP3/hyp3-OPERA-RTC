@@ -42,12 +42,17 @@ docker run -it --rm \
     -e EARTHDATA_USERNAME=[YOUR_USERNAME_HERE] \
     -e EARTHDATA_PASSWORD=[YOUR_PASSWORD_HERE] \
     hyp3-opera-rtc:latest \
-    S1_073251_IW2_20250413T020809_VV_EF1E-BURST S1_073251_IW2_20250413T020809_VH_EF1E-BURST 
+    [CO_POL_GRANULE]
 ```
 
-Where you replace `S1_073251_IW2_20250413T020809_VV_EF1E-BURST S1_073251_IW2_20250413T020809_VH_EF1E-BURST` with the name of the Sentinel-1 burst SLC scenes to generate OPERA RTC granules for.
+Where you replace `[CO_POL_GRANULE]` with the name of the Sentinel-1 co-pol burst SLC scene
+for which to generate the OPERA RTC product.
+Here are some useful examples:
 
-**Input burst SLCs must be from the same satellite pass and be continuous, otherwise the workflow will fail.** More specifically, the input set of bursts needs to be able to pass [this `burst2safe` validity check](https://github.com/ASFHyP3/burst2safe/blob/develop/src/burst2safe/safe.py#L84) in order to be processed.
+- `S1_146160_IW1_20241029T095958_VV_592B-BURST`: generates a VV product
+- `S1_073251_IW2_20250413T020809_VV_EF1E-BURST`: generates a VV+VH product
+- `S1_152193_IW3_20250415T143714_HH_EF65-BURST`: generates an HH product
+- `S1_241258_IW1_20250418T105137_HH_57A0-BURST`: generates an HH+HV product
 
 ## Architecture
 
