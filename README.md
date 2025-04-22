@@ -42,12 +42,10 @@ docker run -it --rm \
     -e EARTHDATA_USERNAME=[YOUR_USERNAME_HERE] \
     -e EARTHDATA_PASSWORD=[YOUR_PASSWORD_HERE] \
     hyp3-opera-rtc:latest \
-    S1_073251_IW2_20250413T020809_VV_EF1E-BURST S1_073251_IW2_20250413T020809_VH_EF1E-BURST 
+    S1_073251_IW2_20250413T020809_VV_EF1E-BURST
 ```
 
-Where you replace `S1_073251_IW2_20250413T020809_VV_EF1E-BURST S1_073251_IW2_20250413T020809_VH_EF1E-BURST` with the name of the Sentinel-1 burst SLC scenes to generate OPERA RTC granules for.
-
-**Input burst SLCs must be from the same satellite pass and be continuous, otherwise the workflow will fail.** More specifically, the input set of bursts needs to be able to pass [this `burst2safe` validity check](https://github.com/ASFHyP3/burst2safe/blob/develop/src/burst2safe/safe.py#L84) in order to be processed.
+Where you replace `S1_073251_IW2_20250413T020809_VV_EF1E-BURST` with the name of the Sentinel-1 burst SLC scenes to generate OPERA RTC granules for.
 
 ## Architecture
 
