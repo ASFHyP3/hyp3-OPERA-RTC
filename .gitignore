@@ -240,3 +240,8 @@ Sessionx.vim
 tags
 # Persistent undo
 [._]*.un~
+
+# Data
+*.tif
+*.tiff
+*.aux.xml

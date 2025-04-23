@@ -3,18 +3,24 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python>=3.8
+  # For running
+  - python>=3.10
+  - git
   - pip
+  - gdal>=3.0
+  - shapely
+  - hyp3lib
+  - boto3
+  - jinja2
+  - burst2safe
   # For packaging, and testing
-  - flake8
-  - flake8-import-order
-  - flake8-blind-except
-  - flake8-builtins
   - setuptools
   - setuptools_scm
   - wheel
+  - moto[s3]
+  - responses
   - pytest
   - pytest-console-scripts
   - pytest-cov
-  # For running
-  - hyp3lib>=3,<4
+  - pip:
+    - -r requirements-static.txt

@@ -1,6 +1,7 @@
-"""HyP3 plugin for OPERA-RTC processing"""
+"""HyP3 plugin for OPERA-RTC processing."""
 
 from importlib.metadata import version
+
 
 __version__ = version(__name__)
 
