@@ -30,15 +30,17 @@ def test_upload_rtc(rtc_results_dir, rtc_output_files, s3_bucket):
     with ZipFile(zip_download_path) as zf:
         files_in_zip = set([f.filename for f in zf.infolist()])
 
-        assert files_in_zip == set([
-            f'{product_name}/',
-            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
-            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
-            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
-            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
-            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
-            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
-        ])
+        assert files_in_zip == set(
+            [
+                f'{product_name}/',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
+            ]
+        )
 
 
 def test_make_zip_name(rtc_output_files):
