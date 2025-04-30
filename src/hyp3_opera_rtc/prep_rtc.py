@@ -101,10 +101,11 @@ def create_input_file_json(input_dir: Path, swath: str, output_path: Path) -> No
     slc_name = filename[:-3] + '.zip'
     files['safe'] = slc_name
     xml_obj = ET.parse(xml).getroot().find('metadata')
+    assert xml_obj is not None
     noise_files = [x.attrib['source_filename'] for x in xml_obj.findall('noise')]
-    files['noise'] = [x for x in noise_files if swath.lower() in x and polarization in x][0]
+    files['noise'] = str([x for x in noise_files if swath.lower() in x and polarization in x][0])
     calibration_files = [x.attrib['source_filename'] for x in xml_obj.findall('calibration')]
-    files['calibration'] = [x for x in calibration_files if swath.lower() in x and polarization in x][0]
+    files['calibration'] = str([x for x in calibration_files if swath.lower() in x and polarization in x][0])
 
     with output_path.open('w') as file:
         json.dump(files, file, indent=4)
@@ -139,8 +140,8 @@ def prep_rtc(
         print('No cross-pol granule found')
         granules = [co_pol_granule]
 
-    with TemporaryDirectory() as tmp_dir:
-        tmp_dir = Path(tmp_dir)
+    with TemporaryDirectory() as dir:
+        tmp_dir = Path(dir)
         tmp_safe = burst2safe(granules=granules, all_anns=True, work_dir=tmp_dir, keep_files=True)
         tmp_zip = Path(make_archive(base_name=str(tmp_safe.with_suffix('')), format='zip', base_dir=str(tmp_safe)))
         granule_path = input_dir / tmp_zip.name

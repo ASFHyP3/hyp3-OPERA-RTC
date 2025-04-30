@@ -40,17 +40,24 @@ def update_xml_filenames(xml_path: Path, safe: str, calibration: str, noise: str
     xpath_prefix = '//eos:AdditionalAttribute[eos:reference/eos:EOS_AdditionalAttributeDescription/eos:name/gco:'
 
     xpath_annotation = xpath_prefix + "CharacterString = 'AnnotationFiles']"
-    annotation = root.xpath(xpath_annotation, namespaces=namespaces)[0]
+    annotations = root.xpath(xpath_annotation, namespaces=namespaces)
+    # assert annotations is not None
+    assert isinstance(annotations, list) and len(annotations) == 1
+    annotation = list(annotations)[0]
     char_string_elem = annotation.find('.//eos:value/gco:CharacterString', namespaces)
     char_string_elem.text = f'["{calibration}", "{noise}"]'
 
     xpath_safe = xpath_prefix + "CharacterString = 'L1SlcGranules']"
-    safe_elem = root.xpath(xpath_safe, namespaces=namespaces)[0]
+    safe_elems = root.xpath(xpath_safe, namespaces=namespaces)
+    assert isinstance(safe_elems, list) and len(safe_elems) == 1
+    safe_elem = list(safe_elems)[0]
     char_string_elem = safe_elem.find('.//eos:value/gco:CharacterString', namespaces)
     char_string_elem.text = f'["{safe}"]'
 
     xpath_input_file = "//gmd:source[gmi:LE_Source/gmd:description/gco:CharacterString = 'GranuleInput']"
-    input_file_elem = root.xpath(xpath_input_file, namespaces=namespaces)[0]
+    input_file_elems = root.xpath(xpath_input_file, namespaces=namespaces)
+    assert isinstance(input_file_elems, list) and len(input_file_elems) == 1
+    input_file_elem = list(input_file_elems)[0]
     file_name_pattern = './/gmi:LE_Source/gmd:sourceCitation/gmd:CI_Citation/gmd:title/gmx:FileName'
     file_name_elem = input_file_elem.find(file_name_pattern, namespaces)
     file_name = file_name_elem.get('src')
@@ -62,14 +69,15 @@ def update_xml_filenames(xml_path: Path, safe: str, calibration: str, noise: str
 
 
 def update_input_filenames(output_dir: Path) -> None:
-    file_name_dict = json.load(output_dir / 'input_file.json')
+    file_name_dict = json.loads(str(output_dir / 'input_file.json'))
     safe = file_name_dict['safe']
     calibration = file_name_dict['calibration']
     noise = file_name_dict['noise']
 
     tifs = list(output_dir.glob('OPERA_L2_RTC-S1*.tif'))
     assert 2 <= len(tifs) <= 3, f'Expected 2 or 3 TIF files, found {len(tifs)}'
-    [update_image_filenames(tif, safe, calibration, noise) for tif in tifs]
+    for tif in tifs:
+        update_image_filenames(tif, safe, calibration, noise)
 
     hdf5_files = list(output_dir.glob('OPERA_L2_RTC-S1*.h5'))
     assert len(hdf5_files) == 1, f'Expected 1 HDF5 file, found {len(hdf5_files)}'
