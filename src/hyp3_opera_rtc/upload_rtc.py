@@ -29,7 +29,13 @@ def update_hdf5_filenames(hdf5_path: Path, safe: str, calibration: str, noise: s
 
 
 def update_xml_filenames(xml_path: Path, safe: str, calibration: str, noise: str) -> None:
-    namespaces = {'eos': 'http://earthdata.nasa.gov/schema/eos', 'gco': 'http://www.isotc211.org/2005/gco'}
+    namespaces = {
+        'eos': 'http://earthdata.nasa.gov/schema/eos',
+        'gco': 'http://www.isotc211.org/2005/gco',
+        'gmd': 'http://www.isotc211.org/2005/gmd',
+        'gmi': 'http://www.isotc211.org/2005/gmi',
+        'gmx': 'http://www.isotc211.org/2005/gmx',
+    }
     root = ET.parse(str(xml_path)).getroot()
     xpath_prefix = '//eos:AdditionalAttribute[eos:reference/eos:EOS_AdditionalAttributeDescription/eos:name/gco:'
 
@@ -42,6 +48,15 @@ def update_xml_filenames(xml_path: Path, safe: str, calibration: str, noise: str
     safe_elem = root.xpath(xpath_safe, namespaces=namespaces)[0]
     char_string_elem = safe_elem.find('.//eos:value/gco:CharacterString', namespaces)
     char_string_elem.text = f'["{safe}"]'
+
+    xpath_input_file = "//gmd:source[gmi:LE_Source/gmd:description/gco:CharacterString = 'GranuleInput']"
+    input_file_elem = root.xpath(xpath_input_file, namespaces=namespaces)[0]
+    file_name_pattern = './/gmi:LE_Source/gmd:sourceCitation/gmd:CI_Citation/gmd:title/gmx:FileName'
+    file_name_elem = input_file_elem.find(file_name_pattern, namespaces)
+    file_name = file_name_elem.get('src')
+    new_file_name = '/'.join(file_name.split('/')[:-1] + [safe])
+    file_name_elem.set('src', new_file_name)
+    file_name_elem.text = file_name_elem.text.replace(file_name, new_file_name)
 
     ET.ElementTree(root).write(xml_path, pretty_print=True, xml_declaration=True, encoding='UTF-8')
 

@@ -49,13 +49,14 @@ def test_update_xml_filenames(tmp_path):
     with Path(test_xml).open('r') as f:
         xml_content = f.read()
         assert '["new_safe"]' in xml_content
+        assert '/home/rtc_user/input_dir/new_safe' in xml_content
         assert '["new_calibration", "new_noise"]' in xml_content
 
 
 def test_upload_rtc(rtc_results_dir, rtc_output_files, s3_bucket):
     prefix = 'myPrefix'
 
-    upload_rtc(s3_bucket, prefix, rtc_results_dir)
+    upload_rtc.upload_rtc(s3_bucket, prefix, rtc_results_dir)
 
     resp = aws.S3_CLIENT.list_objects_v2(Bucket=s3_bucket, Prefix=prefix)
 
