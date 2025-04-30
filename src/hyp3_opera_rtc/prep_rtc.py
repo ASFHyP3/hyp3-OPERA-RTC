@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import warnings
 from pathlib import Path
@@ -81,6 +82,33 @@ def render_template(params: dict, work_dir: Path) -> None:
         file.write(template_str)
 
 
+def create_input_file_json(input_dir: Path, swath: str, output_path: Path) -> None:
+    """Create a JSON describing the in-archive full SLC file names used for RTC processing."""
+    vv_xmls = list(input_dir.glob('S1*VV.xml'))
+    hh_xmls = list(input_dir.glob('S1*HH.xml'))
+    if len(vv_xmls) > 0:
+        polarization = 'vv'
+        xml = vv_xmls[0]
+    elif len(hh_xmls) > 0:
+        polarization = 'hh'
+        xml = hh_xmls[0]
+    else:
+        raise ValueError('No Co-Pol XML metadata files found in input directory')
+
+    files = {}
+    filename = xml.with_suffix('').name
+    slc_name = filename[:-3] + '.zip'
+    files['safe'] = slc_name
+    xml_obj = ET.parse(xml).getroot().find('metadata')
+    noise_files = [x.attrib['source_filename'] for x in xml_obj.findall('noise')]
+    files['noise'] = [x for x in noise_files if swath.lower() in x and polarization in x][0]
+    calibration_files = [x.attrib['source_filename'] for x in xml_obj.findall('calibration')]
+    files['calibration'] = [x for x in calibration_files if swath.lower() in x and polarization in x][0]
+
+    with output_path.open('w') as file:
+        json.dump(files, file, indent=4)
+
+
 def prep_rtc(
     co_pol_granule: str,
     work_dir: Path,
@@ -110,7 +138,8 @@ def prep_rtc(
         print('No cross-pol granule found')
         granules = [co_pol_granule]
 
-    safe_path = burst2safe(granules=granules, all_anns=True, work_dir=input_dir)
+    safe_path = burst2safe(granules=granules, all_anns=True, work_dir=input_dir, keep_files=True)
+    create_input_file_json(input_dir, co_pol_granule.split('_')[2], output_dir / 'input_file.json')
     granule_path = Path(make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path)))
     print(f'Created archive: {granule_path}')
 
