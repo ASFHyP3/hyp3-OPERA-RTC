@@ -1,12 +1,44 @@
 from pathlib import Path
+from shutil import copyfile
 from zipfile import ZipFile
 
+import h5py
 import pytest
 from hyp3lib import aws
 from moto import mock_aws
 from moto.core import patch_client
+from osgeo import gdal
 
-from hyp3_opera_rtc.upload_rtc import make_zip_name, upload_rtc
+from hyp3_opera_rtc.upload_rtc import make_zip_name, update_hdf5_filenames, update_image_filenames, upload_rtc
+
+
+gdal.UseExceptions()
+
+
+def test_update_image_filenames(tmp_path):
+    ds = gdal.GetDriverByName('GTiff').Create(str(tmp_path / 'test.tif'), 10, 10)
+    ds.SetMetadata({'INPUT_L1_SLC_GRANULES': ['old_safe'], 'INPUT_ANNOTATION_FILES': ['old_calibration', 'old_noise']})
+    ds.FlushCache()
+    ds = None
+
+    update_image_filenames(tmp_path / 'test.tif', 'new_safe', 'new_calibration', 'new_noise')
+
+    ds = gdal.Open(str(tmp_path / 'test.tif'))
+    metadata = ds.GetMetadata()
+    assert metadata['INPUT_L1_SLC_GRANULES'] == "['new_safe']"
+    assert metadata['INPUT_ANNOTATION_FILES'] == "['new_calibration', 'new_noise']"
+
+
+def test_update_hdf5_filenames(tmp_path):
+    copyfile('tests/data/test.h5', tmp_path / 'test.h5')
+    update_hdf5_filenames(tmp_path / 'test.h5', 'new_safe', 'new_calibration', 'new_noise')
+    with h5py.File(tmp_path / 'test.h5', 'r') as hdf:
+        safe = hdf['//metadata/processingInformation/inputs/l1SlcGranules'][()]
+        assert safe == b'new_safe'
+        calibration = hdf['//metadata/processingInformation/inputs/annotationFiles'][()][0]
+        assert calibration == b'new_calibration'
+        noise = hdf['//metadata/processingInformation/inputs/annotationFiles'][()][1]
+        assert noise == b'new_noise'
 
 
 def test_upload_rtc(rtc_results_dir, rtc_output_files, s3_bucket):
