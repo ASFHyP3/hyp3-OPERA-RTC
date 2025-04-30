@@ -33,8 +33,13 @@ def update_input_filenames(output_dir: Path) -> None:
     calibration = file_name_dict['calibration']
     noise = file_name_dict['noise']
 
-    [update_image_filenames(tif, safe, calibration, noise) for tif in output_dir.glob('OPERA_L2_RTC-S1*.tif')]
-    update_hdf5_filenames(list(output_dir.glob('OPERA_L2_RTC-S1*.h5'))[0], safe, calibration, noise)
+    tifs = list(output_dir.glob('OPERA_L2_RTC-S1*.tif'))
+    assert 2 <= len(tifs) <= 3, f'Expected 2 or 3 TIF files, found {len(tifs)}'
+    [update_image_filenames(tif, safe, calibration, noise) for tif in tifs]
+
+    hdf5_files = list(output_dir.glob('OPERA_L2_RTC-S1*.h5'))
+    assert len(hdf5_files) == 1, f'Expected 1 HDF5 file, found {len(hdf5_files)}'
+    update_hdf5_filenames(hdf5_files[0], safe, calibration, noise)
 
 
 def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
