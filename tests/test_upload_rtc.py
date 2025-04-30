@@ -9,7 +9,7 @@ from moto import mock_aws
 from moto.core import patch_client
 from osgeo import gdal
 
-from hyp3_opera_rtc.upload_rtc import make_zip_name, update_hdf5_filenames, update_image_filenames, upload_rtc
+from hyp3_opera_rtc import upload_rtc
 
 
 gdal.UseExceptions()
@@ -21,7 +21,7 @@ def test_update_image_filenames(tmp_path):
     ds.FlushCache()
     ds = None
 
-    update_image_filenames(tmp_path / 'test.tif', 'new_safe', 'new_calibration', 'new_noise')
+    upload_rtc.update_image_filenames(tmp_path / 'test.tif', 'new_safe', 'new_calibration', 'new_noise')
 
     ds = gdal.Open(str(tmp_path / 'test.tif'))
     metadata = ds.GetMetadata()
@@ -30,8 +30,9 @@ def test_update_image_filenames(tmp_path):
 
 
 def test_update_hdf5_filenames(tmp_path):
-    copyfile('tests/data/test.h5', tmp_path / 'test.h5')
-    update_hdf5_filenames(tmp_path / 'test.h5', 'new_safe', 'new_calibration', 'new_noise')
+    tmp_hdf5 = tmp_path / 'test.h5'
+    copyfile('tests/data/test.h5', tmp_hdf5)
+    upload_rtc.update_hdf5_filenames(tmp_hdf5, 'new_safe', 'new_calibration', 'new_noise')
     with h5py.File(tmp_path / 'test.h5', 'r') as hdf:
         safe = hdf['//metadata/processingInformation/inputs/l1SlcGranules'][()]
         assert safe == b'new_safe'
@@ -39,6 +40,16 @@ def test_update_hdf5_filenames(tmp_path):
         assert calibration == b'new_calibration'
         noise = hdf['//metadata/processingInformation/inputs/annotationFiles'][()][1]
         assert noise == b'new_noise'
+
+
+def test_update_xml_filenames(tmp_path):
+    test_xml = tmp_path / 'test.iso.xml'
+    copyfile('tests/data/test.iso.xml', test_xml)
+    upload_rtc.update_xml_filenames(test_xml, 'new_safe', 'new_calibration', 'new_noise')
+    with Path(test_xml).open('r') as f:
+        xml_content = f.read()
+        assert '["new_safe"]' in xml_content
+        assert '["new_calibration", "new_noise"]' in xml_content
 
 
 def test_upload_rtc(rtc_results_dir, rtc_output_files, s3_bucket):
@@ -61,8 +72,7 @@ def test_upload_rtc(rtc_results_dir, rtc_output_files, s3_bucket):
 
 
 def test_make_zip_name(rtc_output_files):
-    zip_filename = make_zip_name([Path(f) for f in rtc_output_files])
-
+    zip_filename = upload_rtc.make_zip_name([Path(f) for f in rtc_output_files])
     assert zip_filename == 'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0'
 
 

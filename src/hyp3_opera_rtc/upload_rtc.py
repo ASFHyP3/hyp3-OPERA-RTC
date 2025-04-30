@@ -4,6 +4,7 @@ from pathlib import Path
 from shutil import copyfile, make_archive
 
 import h5py
+import lxml.etree as ET
 from hyp3lib.aws import upload_file_to_s3
 from osgeo import gdal
 
@@ -27,6 +28,24 @@ def update_hdf5_filenames(hdf5_path: Path, safe: str, calibration: str, noise: s
         hdf['//metadata/processingInformation/inputs/annotationFiles'][()] = [calibration, noise]
 
 
+def update_xml_filenames(xml_path: Path, safe: str, calibration: str, noise: str) -> None:
+    namespaces = {'eos': 'http://earthdata.nasa.gov/schema/eos', 'gco': 'http://www.isotc211.org/2005/gco'}
+    root = ET.parse(str(xml_path)).getroot()
+    xpath_prefix = '//eos:AdditionalAttribute[eos:reference/eos:EOS_AdditionalAttributeDescription/eos:name/gco:'
+
+    xpath_annotation = xpath_prefix + "CharacterString = 'AnnotationFiles']"
+    annotation = root.xpath(xpath_annotation, namespaces=namespaces)[0]
+    char_string_elem = annotation.find('.//eos:value/gco:CharacterString', namespaces)
+    char_string_elem.text = f'["{calibration}", "{noise}"]'
+
+    xpath_safe = xpath_prefix + "CharacterString = 'L1SlcGranules']"
+    safe_elem = root.xpath(xpath_safe, namespaces=namespaces)[0]
+    char_string_elem = safe_elem.find('.//eos:value/gco:CharacterString', namespaces)
+    char_string_elem.text = f'["{safe}"]'
+
+    ET.ElementTree(root).write(xml_path, pretty_print=True, xml_declaration=True, encoding='UTF-8')
+
+
 def update_input_filenames(output_dir: Path) -> None:
     file_name_dict = json.load(output_dir / 'input_file.json')
     safe = file_name_dict['safe']
@@ -40,6 +59,10 @@ def update_input_filenames(output_dir: Path) -> None:
     hdf5_files = list(output_dir.glob('OPERA_L2_RTC-S1*.h5'))
     assert len(hdf5_files) == 1, f'Expected 1 HDF5 file, found {len(hdf5_files)}'
     update_hdf5_filenames(hdf5_files[0], safe, calibration, noise)
+
+    xml_files = list(output_dir.glob('OPERA_L2_RTC-S1*.iso.xml'))
+    assert len(xml_files) == 1, f'Expected 1 XML file, found {len(xml_files)}'
+    update_xml_filenames(xml_files[0], safe, calibration, noise)
 
 
 def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
