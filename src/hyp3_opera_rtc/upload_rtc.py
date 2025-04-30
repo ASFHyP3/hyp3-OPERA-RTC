@@ -15,20 +15,26 @@ def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
 
 
 def make_zip(output_files: list[Path], output_dir: Path) -> Path:
+    zip_name = make_zip_name(output_files)
+    zip_path = output_dir / zip_name
+
     zip_archive_path = output_dir / 'zip'
-    zip_archive_path.mkdir(exist_ok=True)
+    (zip_archive_path / zip_name).mkdir(exist_ok=True, parents=True)
 
+    file_extensions_to_include = set(['.png', '.xml', '.tif', '.h5'])
     for output_file in output_files:
-        copyfile(output_file, zip_archive_path / output_file.name)
+        if output_file.suffix not in file_extensions_to_include:
+            continue
 
-    zip_path = output_dir / make_zip_name(output_files)
+        zip_dest_path = zip_archive_path / zip_name / output_file.name
+        copyfile(output_file, zip_dest_path)
+
     output_zip = make_archive(base_name=str(zip_path), format='zip', root_dir=zip_archive_path)
-
     return Path(output_zip)
 
 
 def make_zip_name(product_files: list[Path]) -> str:
-    h5_file = [f for f in product_files if f.name.endswith('h5')].pop()
+    h5_file = next(f for f in product_files if f.name.endswith('h5'))
 
     return h5_file.name.split('.h5')[0]
 
