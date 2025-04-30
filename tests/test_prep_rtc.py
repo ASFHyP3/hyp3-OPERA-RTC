@@ -1,10 +1,31 @@
+import json
 import unittest.mock
+from pathlib import Path
+from shutil import copyfile
 
 import pytest
 import requests
 import responses
 
 from hyp3_opera_rtc import prep_rtc
+
+
+def test_create_file_input_json(tmp_path):
+    tmp_dir = tmp_path / 'input'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    test_xml = Path('tests/data/S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E_VV.xml')
+    copyfile(test_xml, tmp_dir / test_xml.name)
+    output_json = tmp_dir / 'input_file.json'
+
+    prep_rtc.create_input_file_json(tmp_dir, 'IW2', output_json)
+    assert output_json.exists()
+
+    input_files = json.loads(output_json.read_text())
+    assert input_files['safe'] == 'S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E.zip'
+    assert input_files['noise'] == 'noise-s1a-iw2-slc-vv-20250413t020809-20250413t020834-058732-07464f-005.xml'
+    assert (
+        input_files['calibration'] == 'calibration-s1a-iw2-slc-vv-20250413t020809-20250413t020834-058732-07464f-005.xml'
+    )
 
 
 @responses.activate

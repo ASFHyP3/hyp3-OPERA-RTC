@@ -3,7 +3,8 @@ import json
 import os
 import warnings
 from pathlib import Path
-from shutil import make_archive
+from shutil import copyfile, make_archive
+from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
 import hyp3lib.fetch
@@ -138,12 +139,18 @@ def prep_rtc(
         print('No cross-pol granule found')
         granules = [co_pol_granule]
 
-    safe_path = burst2safe(granules=granules, all_anns=True, work_dir=input_dir, keep_files=True)
-    create_input_file_json(input_dir, co_pol_granule.split('_')[2], output_dir / 'input_file.json')
-    granule_path = Path(make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path)))
+    with TemporaryDirectory() as tmp_dir:
+        tmp_dir = Path(tmp_dir)
+        tmp_safe = burst2safe(granules=granules, all_anns=True, work_dir=tmp_dir, keep_files=True)
+        tmp_zip = Path(make_archive(base_name=str(tmp_safe.with_suffix('')), format='zip', base_dir=str(tmp_safe)))
+        granule_path = input_dir / tmp_zip.name
+        copyfile(tmp_zip, granule_path)
+
+        create_input_file_json(tmp_dir, co_pol_granule.split('_')[2], output_dir / 'input_file.json')
+
     print(f'Created archive: {granule_path}')
 
-    orbit_path = orbit.get_orbit(safe_path.with_suffix('').name, save_dir=input_dir)
+    orbit_path = orbit.get_orbit(granule_path.with_suffix('').name, save_dir=input_dir)
     print(f'Downloaded orbit file: {orbit_path}')
 
     db_path = download_burst_db(input_dir)

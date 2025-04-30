@@ -1,0 +1,30 @@
+<burst>
+  <manifest>
+  </manifest>
+  <metadata>
+    <product source_filename="s1a-iw1-slc-vv-20250413t020811-20250413t020836-058732-07464f-004.xml">
+    </product>
+    <noise source_filename="noise-s1a-iw1-slc-vv-20250413t020811-20250413t020836-058732-07464f-004.xml">
+    </noise>
+    <rfi source_filename="rfi-s1a-iw1-slc-vv-20250413t020811-20250413t020836-058732-07464f-004.xml">
+    </rfi>
+    <calibration source_filename="calibration-s1a-iw1-slc-vv-20250413t020811-20250413t020836-058732-07464f-004.xml">
+    </calibration>
+    <product source_filename="s1a-iw2-slc-vv-20250413t020809-20250413t020834-058732-07464f-005.xml">
+    </product>
+    <noise source_filename="noise-s1a-iw2-slc-vv-20250413t020809-20250413t020834-058732-07464f-005.xml">
+    </noise>
+    <rfi source_filename="rfi-s1a-iw2-slc-vv-20250413t020809-20250413t020834-058732-07464f-005.xml">
+    </rfi>
+    <calibration source_filename="calibration-s1a-iw2-slc-vv-20250413t020809-20250413t020834-058732-07464f-005.xml">
+    </calibration>
+    <product source_filename="s1a-iw3-slc-vv-20250413t020810-20250413t020835-058732-07464f-006.xml">
+    </product>
+    <noise source_filename="noise-s1a-iw3-slc-vv-20250413t020810-20250413t020835-058732-07464f-006.xml">
+    </noise>
+    <rfi source_filename="rfi-s1a-iw3-slc-vv-20250413t020810-20250413t020835-058732-07464f-006.xml">
+    </rfi>
+    <calibration source_filename="calibration-s1a-iw3-slc-vv-20250413t020810-20250413t020835-058732-07464f-006.xml">
+    </calibration>
+  </metadata>
+</burst>
