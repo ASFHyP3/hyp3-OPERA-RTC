@@ -2,13 +2,13 @@ import argparse
 import os
 import warnings
 from pathlib import Path
-from shutil import make_archive
 from zipfile import ZipFile
 
 import hyp3lib.fetch
 import lxml.etree as ET
 import requests
-from burst2safe.burst2safe import burst2safe
+from hyp3lib.fetch import download_file
+from hyp3lib.scene import get_download_url
 from jinja2 import Template
 from shapely.geometry import Polygon, box
 
@@ -49,11 +49,31 @@ def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
     return box(*footprint.bounds)
 
 
-def granule_exists(granule: str) -> bool:
+def get_granule_cmr(granule: str) -> bool:
     params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
     response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
+    return response
+
+
+def granule_exists(granule: str) -> bool:
+    response = get_granule_cmr(granule)
     return bool(response.json()['items'])
+
+
+def get_granule_slc_params(granule: str) -> tuple[str, str]:
+    response = get_granule_cmr(granule)
+    items = response.json()['items']
+    assert len(items) == 1
+    item = items[0]
+
+    source_slc = item['umm']['InputGranules'][0]
+
+    opera_burst_id = [attr for attr in item['umm']['AdditionalAttributes'] if attr['Name'] == 'BURST_ID_FULL']
+    assert len(opera_burst_id) == 1
+    opera_burst_id = opera_burst_id[0]['Values'][0]
+
+    return source_slc, opera_burst_id
 
 
 def validate_co_pol_granule(granule: str) -> None:
@@ -105,16 +125,15 @@ def prep_rtc(
     dual_pol = granule_exists(cross_pol_granule)
     if dual_pol:
         print(f'Found cross-pol granule: {cross_pol_granule}')
-        granules = [co_pol_granule, cross_pol_granule]
     else:
         print('No cross-pol granule found')
-        granules = [co_pol_granule]
 
-    safe_path = burst2safe(granules=granules, all_anns=True, work_dir=input_dir)
-    granule_path = Path(make_archive(base_name=str(safe_path.with_suffix('')), format='zip', base_dir=str(safe_path)))
+    source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
+    download_url = get_download_url(source_slc)
+    granule_path = download_file(download_url, chunk_size=10485760)
     print(f'Created archive: {granule_path}')
 
-    orbit_path = orbit.get_orbit(safe_path.with_suffix('').name, save_dir=input_dir)
+    orbit_path = orbit.get_orbit(granule_path.with_suffix('').name, save_dir=input_dir)
     print(f'Downloaded orbit file: {orbit_path}')
 
     db_path = download_burst_db(input_dir)
@@ -130,6 +149,7 @@ def prep_rtc(
         'orbit_path': str(orbit_path),
         'db_path': str(db_path),
         'dem_path': str(dem_path),
+        'opera_burst_id': opera_burst_id,
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
