@@ -11,7 +11,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - All files in zip now contained in folder named after the product
 - Remove `log` and `catalog.json` from the zip
-- Switch a full-SLC based data prep strategy
+- Switch to a full-SLC based data prep strategy
 
 ## [0.1.0]
 
