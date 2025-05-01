@@ -132,8 +132,8 @@ def prep_rtc(
         print('No cross-pol granule found')
 
     source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
-    download_url = get_download_url(source_slc)
-    granule_path = download_file(download_url, chunk_size=10485760)
+    granule_path = download_file(get_download_url(source_slc), chunk_size=10485760)
+    granule_path = Path(granule_path)
     print(f'Created archive: {granule_path}')
 
     orbit_path = orbit.get_orbit(granule_path.with_suffix('').name, save_dir=input_dir)
