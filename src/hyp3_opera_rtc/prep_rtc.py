@@ -49,7 +49,7 @@ def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
     return box(*footprint.bounds)
 
 
-def get_granule_cmr(granule: str) -> bool:
+def get_granule_cmr(granule: str) -> requests.Response:
     params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
     response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
@@ -61,7 +61,7 @@ def granule_exists(granule: str) -> bool:
     return bool(response.json()['items'])
 
 
-def parse_response_for_slc_params(response_dict: dict) -> tuple[str, str]:
+def parse_response_for_slc_params(response_dict: dict) -> tuple:
     assert len(response_dict['items']) == 1
     item = response_dict['items'][0]
 
