@@ -61,19 +61,22 @@ def granule_exists(granule: str) -> bool:
     return bool(response.json()['items'])
 
 
-def get_granule_slc_params(granule: str) -> tuple[str, str]:
-    response = get_granule_cmr(granule)
-    items = response.json()['items']
-    assert len(items) == 1
-    item = items[0]
+def parse_response_for_slc_params(response_dict: dict) -> tuple[str, str]:
+    assert len(response_dict['items']) == 1
+    item = response_dict['items'][0]
 
-    source_slc = item['umm']['InputGranules'][0]
+    source_slc = item['umm']['InputGranules'][0][:-4]
 
     opera_burst_id = [attr for attr in item['umm']['AdditionalAttributes'] if attr['Name'] == 'BURST_ID_FULL']
     assert len(opera_burst_id) == 1
     opera_burst_id = opera_burst_id[0]['Values'][0]
 
     return source_slc, opera_burst_id
+
+
+def get_granule_slc_params(granule: str) -> tuple[str, str]:
+    response = get_granule_cmr(granule)
+    return parse_response_for_slc_params(response.json())
 
 
 def validate_co_pol_granule(granule: str) -> None:
