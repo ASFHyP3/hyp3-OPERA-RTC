@@ -13,7 +13,7 @@ def test_parse_response_for_slc_params():
     test_response = json.loads(Path('tests/data/burst_response.json').read_text())
     slc_name, burst_id = prep_rtc.parse_response_for_slc_params(test_response)
     assert slc_name == 'S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E'
-    assert burst_id == '035_073251_IW2'
+    assert burst_id == 't035_073251_iw2'
 
 
 @responses.activate
