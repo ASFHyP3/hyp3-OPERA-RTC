@@ -126,31 +126,25 @@ def prep_rtc(
 
     validate_co_pol_granule(co_pol_granule)
 
-    cross_pol_granule = get_cross_pol_name(co_pol_granule)
-    dual_pol = granule_exists(cross_pol_granule)
-    if dual_pol:
-        print(f'Found cross-pol granule: {cross_pol_granule}')
-    else:
-        print('No cross-pol granule found')
-
     source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
-    granule_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
-    granule_path = Path(granule_path)
-    print(f'Created archive: {granule_path}')
+    safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
+    safe_path = Path(safe_path)
+    dual_pol = safe_path.name[14] == 'D'
+    print(f'Created archive: {safe_path}')
 
-    orbit_path = orbit.get_orbit(granule_path.with_suffix('').name, save_dir=input_dir)
+    orbit_path = orbit.get_orbit(safe_path.with_suffix('').name, save_dir=input_dir)
     print(f'Downloaded orbit file: {orbit_path}')
 
     db_path = download_burst_db(input_dir)
     print(f'Downloaded burst database: {db_path}')
 
     dem_path = input_dir / 'dem.tif'
-    granule_bbox = get_s1_granule_bbox(granule_path)
+    granule_bbox = get_s1_granule_bbox(safe_path)
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
     print(f'Downloaded DEM: {dem_path}')
 
     runconfig_dict = {
-        'granule_path': str(granule_path),
+        'granule_path': str(safe_path),
         'orbit_path': str(orbit_path),
         'db_path': str(db_path),
         'dem_path': str(dem_path),
