@@ -1,0 +1,305 @@
+{
+  "hits": 1,
+  "took": 28,
+  "items": [
+    {
+      "meta": {
+        "concept-type": "granule",
+        "concept-id": "G3493873323-ASF",
+        "revision-id": 1,
+        "native-id": "S1_073251_IW2_20250413T020809_VV_EF1E-BURST",
+        "collection-concept-id": "C2709161906-ASF",
+        "provider-id": "ASF",
+        "format": "application/vnd.nasa.cmr.umm+json",
+        "revision-date": "2025-04-13T05:21:49.972Z"
+      },
+      "umm": {
+        "TemporalExtent": {
+          "RangeDateTime": {
+            "BeginningDateTime": "2025-04-13T02:08:10.453534Z",
+            "EndingDateTime": "2025-04-13T02:08:13.555368Z"
+          }
+        },
+        "OrbitCalculatedSpatialDomains": [
+          {
+            "OrbitNumber": 58732
+          }
+        ],
+        "GranuleUR": "S1_073251_IW2_20250413T020809_VV_EF1E-BURST",
+        "AdditionalAttributes": [
+          {
+            "Name": "ASC_NODE_TIME",
+            "Values": [
+              "2025-04-13T01:57:59.280569Z"
+            ]
+          },
+          {
+            "Name": "ASCENDING_DESCENDING",
+            "Values": [
+              "ASCENDING"
+            ]
+          },
+          {
+            "Name": "AZIMUTH_ANX_TIME",
+            "Values": [
+              "610.1584306672"
+            ]
+          },
+          {
+            "Name": "AZIMUTH_TIME",
+            "Values": [
+              "2025-04-13T02:08:09.435967"
+            ]
+          },
+          {
+            "Name": "AZIMUTH_TIME_INTERVAL",
+            "Values": [
+              "0.002055556299999998"
+            ]
+          },
+          {
+            "Name": "BEAM_MODE",
+            "Values": [
+              "IW"
+            ]
+          },
+          {
+            "Name": "BEAM_MODE_DESC",
+            "Values": [
+              "Interferometric Wide. 250 km swath, 5 m x 20 m spatial resolution and burst synchronization for interferometry. IW is considered to be the standard mode over land masses."
+            ]
+          },
+          {
+            "Name": "BURST_ID_ABSOLUTE",
+            "Values": [
+              "126150173"
+            ]
+          },
+          {
+            "Name": "BURST_ID_FULL",
+            "Values": [
+              "035_073251_IW2"
+            ]
+          },
+          {
+            "Name": "BURST_ID_RELATIVE",
+            "Values": [
+              "73251"
+            ]
+          },
+          {
+            "Name": "BURST_INDEX",
+            "Values": [
+              "0"
+            ]
+          },
+          {
+            "Name": "BYTE_LENGTH",
+            "Values": [
+              "154781148"
+            ]
+          },
+          {
+            "Name": "BYTE_OFFSET",
+            "Values": [
+              "108963"
+            ]
+          },
+          {
+            "Name": "CENTER_LAT",
+            "Values": [
+              "37.84383923820902"
+            ]
+          },
+          {
+            "Name": "CENTER_LON",
+            "Values": [
+              "-122.37700996731327"
+            ]
+          },
+          {
+            "Name": "GROUP_ID",
+            "Values": [
+              "S1A_IWDV_0121_0127_058732_035"
+            ]
+          },
+          {
+            "Name": "LINES_PER_BURST",
+            "Values": [
+              "1509"
+            ]
+          },
+          {
+            "Name": "PATH_NUMBER",
+            "Values": [
+              "35"
+            ]
+          },
+          {
+            "Name": "POLARIZATION",
+            "Values": [
+              "VV"
+            ]
+          },
+          {
+            "Name": "PROCESSING_LEVEL",
+            "Values": [
+              "L1"
+            ]
+          },
+          {
+            "Name": "PROCESSING_TYPE",
+            "Values": [
+              "BURST"
+            ]
+          },
+          {
+            "Name": "SAMPLES_PER_BURST",
+            "Values": [
+              "25643"
+            ]
+          },
+          {
+            "Name": "SUBSWATH_NAME",
+            "Values": [
+              "IW2"
+            ]
+          },
+          {
+            "Name": "SV_POSITION_POST",
+            "Values": [
+              "-3466943.640335,-4432648.526834,4280636.897919,2025-04-13T02:08:19.000000"
+            ]
+          },
+          {
+            "Name": "SV_POSITION_PRE",
+            "Values": [
+              "-3480520.469779,-4478505.865553,4221649.253332,2025-04-13T02:08:09.000000"
+            ]
+          },
+          {
+            "Name": "SV_VELOCITY_POST",
+            "Values": [
+              "1380.492592,4609.671815,5874.702457,2025-04-13T02:08:19.000000"
+            ]
+          },
+          {
+            "Name": "SV_VELOCITY_PRE",
+            "Values": [
+              "1334.859471,4561.698961,5922.715631,2025-04-13T02:08:09.000000"
+            ]
+          }
+        ],
+        "SpatialExtent": {
+          "HorizontalSpatialDomain": {
+            "Geometry": {
+              "GPolygons": [
+                {
+                  "Boundary": {
+                    "Points": [
+                      {
+                        "Latitude": 37.679959,
+                        "Longitude": -122.867058
+                      },
+                      {
+                        "Latitude": 37.751761,
+                        "Longitude": -122.345075
+                      },
+                      {
+                        "Latitude": 37.817265,
+                        "Longitude": -121.851681
+                      },
+                      {
+                        "Latitude": 38.009685,
+                        "Longitude": -121.893464
+                      },
+                      {
+                        "Latitude": 37.940016,
+                        "Longitude": -122.387251
+                      },
+                      {
+                        "Latitude": 37.86404,
+                        "Longitude": -122.909645
+                      },
+                      {
+                        "Latitude": 37.679959,
+                        "Longitude": -122.867058
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "ProviderDates": [
+          {
+            "Type": "Insert",
+            "Date": "2025-04-13T05:21:49Z"
+          },
+          {
+            "Type": "Update",
+            "Date": "2025-04-13T05:21:49Z"
+          }
+        ],
+        "CollectionReference": {
+          "ShortName": "SENTINEL-1_BURSTS",
+          "Version": "1"
+        },
+        "PGEVersionClass": {
+          "PGEName": "Sentinel-1 IPF",
+          "PGEVersion": "003.91"
+        },
+        "RelatedUrls": [
+          {
+            "URL": "https://sentinel1-burst.asf.alaska.edu/S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E/IW2/VV/0.tiff",
+            "Type": "USE SERVICE API",
+            "Description": "Use the link to extract the burst as a GeoTIFF from the input granule.",
+            "Format": "GeoTIFF"
+          },
+          {
+            "URL": "https://sentinel1-burst.asf.alaska.edu/S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E/IW2/VV/0.xml",
+            "Type": "USE SERVICE API",
+            "Description": "Use the link to extract an extended metadata file of the burst from the input granule.",
+            "Format": "XML"
+          },
+          {
+            "URL": "https://sentinel1-burst.asf.alaska.edu/S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E/IW2/VV/0.zip",
+            "Type": "USE SERVICE API",
+            "Description": "Use the link to extract the burst in ESA SAFE format from the input granule.",
+            "Format": "SAFE"
+          },
+          {
+            "URL": "https://sentinel1-burst-docs.asf.alaska.edu/",
+            "Type": "VIEW RELATED INFORMATION",
+            "Description": "Usage information for the API used to extract a burst product from a Sentinel-1 SLC granule."
+          }
+        ],
+        "InputGranules": [
+          "S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E-SLC"
+        ],
+        "Platforms": [
+          {
+            "Instruments": [
+              {
+                "ShortName": "C-SAR",
+                "Characteristics": [
+                  {
+                    "Name": "LookDirection",
+                    "Value": "RIGHT"
+                  }
+                ]
+              }
+            ],
+            "ShortName": "SENTINEL-1A"
+          }
+        ],
+        "MetadataSpecification": {
+          "URL": "https://cdn.earthdata.nasa.gov/umm/granule/v1.6.6",
+          "Name": "UMM-G",
+          "Version": "1.6.6"
+        }
+      }
+    }
+  ]
+}

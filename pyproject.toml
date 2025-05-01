@@ -30,7 +30,6 @@ dependencies = [
     "urllib3",
     "lxml",
     "jinja2",
-    "burst2safe"
 ]
 dynamic = ["version", "readme"]
 
