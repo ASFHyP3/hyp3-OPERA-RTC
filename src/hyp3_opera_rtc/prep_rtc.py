@@ -49,21 +49,21 @@ def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
     return box(*footprint.bounds)
 
 
-def get_granule_cmr(granule: str) -> requests.Response:
+def get_granule_cmr(granule: str) -> dict:
     params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
     response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
-    return response
+    return response.json()
 
 
 def granule_exists(granule: str) -> bool:
     response = get_granule_cmr(granule)
-    return bool(response.json()['items'])
+    return bool(response['items'])
 
 
-def parse_response_for_slc_params(response_dict: dict) -> tuple[str, str]:
-    assert len(response_dict['items']) == 1
-    item = response_dict['items'][0]
+def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
+    assert len(response['items']) == 1
+    item = response['items'][0]
 
     source_slc = item['umm']['InputGranules'][0][:-4]
     assert isinstance(source_slc, str)
@@ -78,7 +78,7 @@ def parse_response_for_slc_params(response_dict: dict) -> tuple[str, str]:
 
 def get_granule_slc_params(granule: str) -> tuple[str, str]:
     response = get_granule_cmr(granule)
-    return parse_response_for_slc_params(response.json())
+    return parse_response_for_slc_params(response)
 
 
 def validate_co_pol_granule(granule: str) -> None:
