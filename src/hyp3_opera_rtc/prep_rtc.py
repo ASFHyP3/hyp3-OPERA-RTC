@@ -61,7 +61,7 @@ def granule_exists(granule: str) -> bool:
     return bool(response.json()['items'])
 
 
-def parse_response_for_slc_params(response_dict: dict) -> tuple[str,str]:
+def parse_response_for_slc_params(response_dict: dict) -> tuple[str, str]:
     assert len(response_dict['items']) == 1
     item = response_dict['items'][0]
 
