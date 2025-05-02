@@ -12,7 +12,6 @@ dependencies:
   - hyp3lib
   - boto3
   - jinja2
-  - burst2safe
   # For packaging, and testing
   - setuptools
   - setuptools_scm

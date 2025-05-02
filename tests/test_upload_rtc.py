@@ -18,14 +18,29 @@ def test_upload_rtc(rtc_results_dir, rtc_output_files, s3_bucket):
 
     assert len(resp['Contents']) == 9
 
+    product_name = 'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0'
     zip_s3_key = [c['Key'] for c in resp['Contents'] if c['Key'].endswith('.zip')].pop()
+    zip_filename = zip_s3_key.split(f'{prefix}/').pop()
+
+    assert zip_filename == f'{product_name}.zip'
+
     zip_download_path = rtc_results_dir / 'output.zip'
     aws.S3_CLIENT.download_file(s3_bucket, zip_s3_key, zip_download_path)
 
     with ZipFile(zip_download_path) as zf:
         files_in_zip = set([f.filename for f in zf.infolist()])
 
-        assert files_in_zip == set(rtc_output_files)
+        assert files_in_zip == set(
+            [
+                f'{product_name}/',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
+                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
+            ]
+        )
 
 
 def test_make_zip_name(rtc_output_files):
