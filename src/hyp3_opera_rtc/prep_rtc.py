@@ -118,9 +118,9 @@ def prep_rtc(
         work_dir: Working directory for processing
         resolution: Resolution of the output RTC (m)
     """
-    scratch_dir = work_dir / 'scratch'
-    input_dir = work_dir / 'input'
-    output_dir = work_dir / 'output'
+    scratch_dir = work_dir / 'scratch_dir'
+    input_dir = work_dir / 'input_dir'
+    output_dir = work_dir / 'output_dir'
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
