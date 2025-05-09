@@ -9,7 +9,7 @@ dependencies:
   - pip
   - gdal>=3.0
   - shapely
-  - hyp3lib
+  - hyp3lib>4,<5
   - boto3
   - jinja2
   # For packaging, and testing
