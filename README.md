@@ -4,6 +4,8 @@ A HyP3 plugin for OPERA-RTC processing
 
 **ALL CREDIT FOR THIS PLUGIN'S RTC PRODUCTS GOES TO THE [JPL OPERA TEAM](https://www.jpl.nasa.gov/go/opera). THIS PLUGIN MERELY ALLOWS US TO RUN THEIR WORKFLOW IN A HYP3 ENVIRONMENT.**
 
+**VALIDATION OF THIS PLUGIN IS STILL ONGOING. CONFIDENCE THAT THIS PLUGIN PRODUCES EQUIVALENT RTC DATA PRODUCTS AS THE OPERA MISSION IS NOT (YET) HIGH ENOUGH FOR PRODUCTION USE.**
+
 ## Earthdata Login Credentials
 
 To use this plugin, the user must provide their Earthdata Login credentials in order to download input data.
