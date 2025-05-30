@@ -1,4 +1,4 @@
-FROM 845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1:2.1.1
+FROM ghcr.io/nasa/opera-sds-pge/opera_pge/rtc_s1:2.1.1
 
 # For opencontainers label definitions, see:
 #    https://github.com/opencontainers/image-spec/blob/master/annotations.md
