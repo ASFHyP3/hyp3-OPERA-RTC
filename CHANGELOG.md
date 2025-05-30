@@ -9,7 +9,8 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.3]
 
 ### Changed
-- Download opera burst db during container build instead of at runtime
+- Download opera burst db during container build instead of at runtime.
+- Publish docker container to public GHCR repo instead of private Amazon ECR repo.
 
 ## [0.1.2]
 
