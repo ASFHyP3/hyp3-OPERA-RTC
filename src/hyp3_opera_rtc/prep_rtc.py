@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import warnings
 from pathlib import Path
 from zipfile import ZipFile
@@ -18,16 +19,13 @@ from hyp3_opera_rtc import dem, orbit
 CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
 
 
-def download_burst_db(save_dir: Path) -> Path:
-    db_path = save_dir / 'opera-burst-bbox-only.sqlite3'
+def prep_burst_db(save_dir: Path) -> Path:
+    db_filename = 'opera-burst-bbox-only.sqlite3'
+    db_path = save_dir / db_filename
 
-    if db_path.exists():
-        return db_path
+    shutil.copy(Path.home() / db_filename, db_path)
 
-    # Currently using a version created using opera-adt/burst_db v0.4.0, but hope to switch to ASF-provide source.
-    url = 'https://ffwilliams2-shenanigans.s3.us-west-2.amazonaws.com/opera/opera-burst-bbox-only.sqlite3'
-    db_path = hyp3lib.fetch.download_file(url, str(save_dir))
-    return Path(db_path)
+    return db_path
 
 
 def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
@@ -135,8 +133,8 @@ def prep_rtc(
     orbit_path = orbit.get_orbit(safe_path.with_suffix('').name, save_dir=input_dir)
     print(f'Downloaded orbit file: {orbit_path}')
 
-    db_path = download_burst_db(input_dir)
-    print(f'Downloaded burst database: {db_path}')
+    db_path = prep_burst_db(input_dir)
+    print(f'Burst database: {db_path}')
 
     dem_path = input_dir / 'dem.tif'
     granule_bbox = get_s1_granule_bbox(safe_path)
