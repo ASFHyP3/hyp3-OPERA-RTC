@@ -4,6 +4,8 @@ A HyP3 plugin for OPERA-RTC processing
 
 **ALL CREDIT FOR THIS PLUGIN'S RTC PRODUCTS GOES TO THE [JPL OPERA TEAM](https://www.jpl.nasa.gov/go/opera). THIS PLUGIN MERELY ALLOWS US TO RUN THEIR WORKFLOW IN A HYP3 ENVIRONMENT.**
 
+**VALIDATION OF THIS PLUGIN IS STILL ONGOING. CONFIDENCE THAT THIS PLUGIN PRODUCES EQUIVALENT RTC DATA PRODUCTS AS THE OPERA MISSION IS NOT (YET) HIGH ENOUGH FOR PRODUCTION USE.**
+
 ## Earthdata Login Credentials
 
 To use this plugin, the user must provide their Earthdata Login credentials in order to download input data.
@@ -14,20 +16,11 @@ Your credentials can be passed to the workflows via environmental variables that
 
 ## Usage
 
-> [!WARNING]
-> This plugin is designed to run within the HyP3 processing system, and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container (see architecture section below). Currently this container is not publicly available, but the OPERA team is working to make it available in the near future.
-
+This plugin is designed to run within the HyP3 processing system,
+and directly relies on the JPL OPERA OPERA-RTC-S1 Product Generation Executable (PGE) docker container (see architecture section below).
 For this reason, the plugin is only runnable via the docker container.
 
-Because our docker image is based on `845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1` (see the [Dockerfile](./Dockerfile)),
-you'll need to authenticate to Amazon ECR in the HyP3 AWS account before building our docker image
-(you must be an ASF developer with access to the HyP3 AWS account):
-
-```
-aws --profile hyp3 ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 845172464411.dkr.ecr.us-west-2.amazonaws.com
-```
-
-Then build our container:
+Build the container:
 
 ```bash
 git clone https://github.com/ASFHyP3/hyp3-OPERA-RTC.git

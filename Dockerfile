@@ -1,4 +1,4 @@
-FROM 845172464411.dkr.ecr.us-west-2.amazonaws.com/opera_pge/rtc_s1:2.1.1
+FROM ghcr.io/nasa/opera-sds-pge/opera_pge/rtc_s1:2.1.1
 
 # For opencontainers label definitions, see:
 #    https://github.com/opencontainers/image-spec/blob/master/annotations.md
@@ -14,6 +14,8 @@ LABEL org.opencontainers.image.documentation="https://hyp3-docs.asf.alaska.edu"
 USER root
 RUN chown rtc_user:rtc_user /home/rtc_user/scratch
 USER rtc_user
+
+RUN curl https://asf-dem-west.s3.amazonaws.com/AUX/opera-burst-bbox-only.sqlite3 -o /home/rtc_user/opera-burst-bbox-only.sqlite3
 
 COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
 RUN conda env create -f /home/rtc_user/hyp3-opera-rtc/environment.yml && \
