@@ -23,7 +23,6 @@ RUN conda env create -f /home/rtc_user/hyp3-opera-rtc/environment.yml && \
     sed -i 's/conda activate RTC/conda activate hyp3-opera-rtc/g' /home/rtc_user/.bashrc && \
     conda run -n hyp3-opera-rtc python -m pip install --no-cache-dir /home/rtc_user/hyp3-opera-rtc
 
-
 WORKDIR /home/rtc_user
 ENTRYPOINT ["/home/rtc_user/hyp3-opera-rtc/src/hyp3_opera_rtc/etc/entrypoint.sh"]
 CMD ["-h"]
