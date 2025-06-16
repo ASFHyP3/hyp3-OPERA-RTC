@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import shapely
@@ -28,9 +29,9 @@ def margin_km_to_longitude_deg(margin_in_km: float, lat: float) -> float:
     return delta_lon
 
 
-def polygon_from_bounding_box(bounding_box: tuple[float]) -> Polygon:
+def polygon_from_bounds(bounds: tuple[float, float, float, float]) -> Polygon:
     """Create a polygon (EPSG:4326) from the lat/lon coordinates corresponding to a provided bounding box."""
-    lon_min, lat_min, lon_max, lat_max = bounding_box
+    lon_min, lat_min, lon_max, lat_max = bounds
     # note we can also use the center lat here
     lat_worst_case = max([lat_min, lat_max])
     margin_in_km = 50.0
@@ -86,11 +87,11 @@ def check_antimeridean(poly: Polygon) -> list[Polygon]:
     return polys
 
 
-def snap_coord(val: float, snap: float, offset: float, round_func: callable) -> float:
+def snap_coord(val: float, snap: float, offset: float, round_func: Callable) -> float:
     return round_func(float(val - offset) / snap) * snap + offset
 
 
-def translate_dem(vrt_filename: str, output_path: str, bounds: tuple[float]) -> None:
+def translate_dem(vrt_filename: str, output_path: str, bounds: tuple[float, float, float, float]) -> None:
     """Translate the OPERA DEM from S3 to a region matching the provided boundaries.
 
     Params:
@@ -152,14 +153,14 @@ def translate_dem(vrt_filename: str, output_path: str, bounds: tuple[float]) -> 
         ds.SetGeoTransform(tuple(geotransform))
 
 
-def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float]) -> None:
+def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float, float, float, float]) -> None:
     """Download a DEM from the specified S3 bucket.
 
     Params:
         polys: List of shapely polygons.
         outfile: Path to the where the output DEM file is to be staged.
     """
-    poly = polygon_from_bounding_box(bounds)
+    poly = polygon_from_bounds(bounds)
     polys = check_antimeridean(poly)
     dem_list = []
 

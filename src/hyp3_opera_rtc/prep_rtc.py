@@ -138,7 +138,7 @@ def prep_rtc(
 
     dem_path = input_dir / 'dem.tif'
     granule_bbox = get_s1_granule_bbox(safe_path)
-    dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
+    dem.download_opera_dem_for_footprint(dem_path, granule_bbox.bounds)
     print(f'Downloaded DEM: {dem_path}')
 
     runconfig_dict = {
