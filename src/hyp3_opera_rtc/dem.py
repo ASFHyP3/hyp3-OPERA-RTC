@@ -2,6 +2,7 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
+import backoff
 import numpy as np
 import shapely
 import shapely.ops
@@ -91,6 +92,7 @@ def snap_coord(val: float, snap: float, offset: float, round_func: Callable) -> 
     return round_func(float(val - offset) / snap) * snap + offset
 
 
+@backoff.on_exception(backoff.expo, Exception, max_time=600, max_value=32)
 def translate_dem(vrt_filename: str, output_path: str, bounds: tuple[float, float, float, float]) -> None:
     """Translate the OPERA DEM from S3 to a region matching the provided boundaries.
 
