@@ -28,7 +28,7 @@ def prep_burst_db(save_dir: Path) -> Path:
     return db_path
 
 
-def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
+def get_s1_granule_bbox(granule_path: Path) -> Polygon:
     with ZipFile(granule_path, 'r') as z:
         manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
         with z.open(manifest_path) as m:
@@ -43,7 +43,7 @@ def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
 
     coord_strings = [pair.split(',') for pair in frame_string.split(' ')]
     coords = [(float(lon), float(lat)) for lat, lon in coord_strings]
-    footprint = Polygon(coords).buffer(buffer)
+    footprint = Polygon(coords)
     return box(*footprint.bounds)
 
 

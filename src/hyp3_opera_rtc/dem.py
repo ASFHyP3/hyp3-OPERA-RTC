@@ -171,7 +171,6 @@ def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float]) -> Non
     for idx, poly in enumerate(polys):
         output_path = f'{outfile.stem}_{idx}.tif'
         dem_list.append(output_path)
-        x_min, y_min, x_max, y_max = poly.bounds
-        translate_dem(vrt_filename, output_path, x_min, x_max, y_min, y_max)
+        translate_dem(vrt_filename, output_path, bounds)
 
     gdal.BuildVRT(str(outfile), dem_list)
