@@ -171,7 +171,7 @@ def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float, float, 
             GDAL_HTTP_COOKIEFILE=cookie_file.name,
             GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',
         ):
-            vrt_filename = '/vsicurl/https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.2/EPSG4326/EPSG4326.vrt'
+            vrt_filename = '/vsicurl/https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1/EPSG4326/EPSG4326.vrt'
             for idx, poly in enumerate(polys):
                 output_path = f'{outfile.stem}_{idx}.tif'
                 dem_list.append(output_path)
