@@ -1,12 +1,12 @@
-import os
 from collections.abc import Callable
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
-import backoff
 import numpy as np
 import shapely
 import shapely.ops
 import shapely.wkt
+from hyp3lib.util import GDALConfigManager
 from osgeo import gdal, osr
 from shapely.geometry import LinearRing, Polygon, box
 
@@ -49,7 +49,7 @@ def polygon_from_bounds(bounds: tuple[float, float, float, float]) -> Polygon:
     return poly
 
 
-def check_antimeridean(poly: Polygon) -> list[Polygon]:
+def split_antimeridean(poly: Polygon) -> list[Polygon]:
     """Check if the provided polygon crosses the antimeridian and split it if it does."""
     x_min, _, x_max, _ = poly.bounds
 
@@ -92,14 +92,13 @@ def snap_coord(val: float, snap: float, offset: float, round_func: Callable) -> 
     return round_func(float(val - offset) / snap) * snap + offset
 
 
-@backoff.on_exception(backoff.expo, Exception, max_time=600, max_value=32)
 def translate_dem(vrt_filename: str, output_path: str, bounds: tuple[float, float, float, float]) -> None:
-    """Translate the OPERA DEM from S3 to a region matching the provided boundaries.
+    """Write a local subset of the OPERA DEM for a region matching the provided bounds.
 
     Params:
         vrt_filename: Path to the input VRT file
         output_path: Path to the translated output GTiff file
-        bounds: tuple of (x_min, x_max, y_min, y_max)
+        bounds: Bounding box in the form of (lon_min, lat_min, lon_max, lat_max)
     """
     ds = gdal.Open(vrt_filename, gdal.GA_ReadOnly)
 
@@ -159,21 +158,23 @@ def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float, float, 
     """Download a DEM from the specified S3 bucket.
 
     Params:
-        polys: List of shapely polygons.
         outfile: Path to the where the output DEM file is to be staged.
+        bounds: Bounding box in the form of (lon_min, lat_min, lon_max, lat_max).
     """
     poly = polygon_from_bounds(bounds)
-    polys = check_antimeridean(poly)
+    polys = split_antimeridean(poly)
     dem_list = []
 
-    os.environ['GDAL_HTTP_COOKIEJAR'] = 'cookies.txt'
-    os.environ['GDAL_HTTP_COOKIEFILE'] = 'cookies.txt'
-    os.environ['GDAL_DISABLE_READDIR_ON_OPEN'] = 'EMPTY_DIR'
+    with NamedTemporaryFile(suffix='.txt') as cookie_file:
+        with GDALConfigManager(
+            GDAL_HTTP_COOKIEJAR=cookie_file.name,
+            GDAL_HTTP_COOKIEFILE=cookie_file.name,
+            GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',
+        ):
+            vrt_filename = '/vsicurl/https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.2/EPSG4326/EPSG4326.vrt'
+            for idx, poly in enumerate(polys):
+                output_path = f'{outfile.stem}_{idx}.tif'
+                dem_list.append(output_path)
+                translate_dem(vrt_filename, output_path, bounds)
 
-    vrt_filename = '/vsicurl/https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.2/EPSG4326/EPSG4326.vrt'
-    for idx, poly in enumerate(polys):
-        output_path = f'{outfile.stem}_{idx}.tif'
-        dem_list.append(output_path)
-        translate_dem(vrt_filename, output_path, bounds)
-
-    gdal.BuildVRT(str(outfile), dem_list)
+            gdal.BuildVRT(str(outfile), dem_list)

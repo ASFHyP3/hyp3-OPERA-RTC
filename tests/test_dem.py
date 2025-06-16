@@ -29,12 +29,12 @@ def test_polygon_from_bounds():
 
 def test_check_antimeridean():
     no_cross = box(-1, -1, 0, 0)
-    polys = dem.check_antimeridean(no_cross)
+    polys = dem.split_antimeridean(no_cross)
     assert len(polys) == 1
     assert polys[0].equals(no_cross)
 
     cross = box(179, -1, 181, 0)
-    polys = dem.check_antimeridean(cross)
+    polys = dem.split_antimeridean(cross)
     negative_side = box(-180, -1, -179, 0)
     positive_side = box(179, -1, 180, 0)
     assert len(polys) == 2
