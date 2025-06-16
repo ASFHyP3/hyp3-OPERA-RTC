@@ -27,14 +27,14 @@ def test_polygon_from_bounds():
     assert tuple([round(x, 2) for x in cross_poly.bounds]) == (179.55, -1.45, 181.45, 0.45)
 
 
-def test_check_antimeridean():
+def test_check_antimeridian():
     no_cross = box(-1, -1, 0, 0)
-    polys = dem.split_antimeridean(no_cross)
+    polys = dem.split_antimeridian(no_cross)
     assert len(polys) == 1
     assert polys[0].equals(no_cross)
 
     cross = box(179, -1, 181, 0)
-    polys = dem.split_antimeridean(cross)
+    polys = dem.split_antimeridian(cross)
     negative_side = box(-180, -1, -179, 0)
     positive_side = box(179, -1, 180, 0)
     assert len(polys) == 2

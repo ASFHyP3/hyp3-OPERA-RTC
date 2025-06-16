@@ -49,11 +49,11 @@ def polygon_from_bounds(bounds: tuple[float, float, float, float]) -> Polygon:
     return poly
 
 
-def split_antimeridean(poly: Polygon) -> list[Polygon]:
+def split_antimeridian(poly: Polygon) -> list[Polygon]:
     """Check if the provided polygon crosses the antimeridian and split it if it does."""
     x_min, _, x_max, _ = poly.bounds
 
-    # Check anitmeridean crossing
+    # Check anitmeridian crossing
     if (x_max - x_min > 180.0) or (x_min <= 180.0 <= x_max):
         dateline = shapely.wkt.loads('LINESTRING( 180.0 -90.0, 180.0 90.0)')
 
@@ -162,7 +162,7 @@ def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float, float, 
         bounds: Bounding box in the form of (lon_min, lat_min, lon_max, lat_max).
     """
     poly = polygon_from_bounds(bounds)
-    polys = split_antimeridean(poly)
+    polys = split_antimeridian(poly)
     dem_list = []
 
     with NamedTemporaryFile(suffix='.txt') as cookie_file:
