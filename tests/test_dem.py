@@ -20,11 +20,11 @@ def test_margin_km_to_longitude_deg():
 def test_polygon_from_bounds():
     poly = dem.polygon_from_bounds((-1, -1, 0, 0))
     assert isinstance(poly, Polygon)
-    assert tuple([round(x, 2) for x in poly.bounds]) == (-1.45, -1.45, 0.45, 0.45)
+    assert tuple([round(x, 2) for x in poly.bounds]) == (-1.90, -1.90, 0.90, 0.90)
 
     cross_poly = dem.polygon_from_bounds((180, -1, 181, 0))
     assert isinstance(cross_poly, Polygon)
-    assert tuple([round(x, 2) for x in cross_poly.bounds]) == (179.55, -1.45, 181.45, 0.45)
+    assert tuple([round(x, 2) for x in cross_poly.bounds]) == (179.10, -1.90, 181.90, 0.90)
 
 
 def test_check_antimeridian():
