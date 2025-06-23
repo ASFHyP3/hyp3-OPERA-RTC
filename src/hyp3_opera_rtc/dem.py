@@ -35,7 +35,7 @@ def polygon_from_bounds(bounds: tuple[float, float, float, float]) -> Polygon:
     lon_min, lat_min, lon_max, lat_max = bounds
     # note we can also use the center lat here
     lat_worst_case = max([lat_min, lat_max])
-    margin_in_km = 100.0
+    margin_in_km = 200
     lat_margin = margin_km_to_deg(margin_in_km)
     lon_margin = margin_km_to_longitude_deg(margin_in_km, lat=lat_worst_case)
     # Check if the bbox crosses the antimeridian and apply the margin accordingly
