@@ -7,15 +7,11 @@ and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.1.5]
-
-### Changed
-- Updated DEM bounds buffer from 50 to 200 km
-
 ## [0.1.4]
 
 ### Changed
 - Update DEM fetching/tiling strategy to match OPERA's.
+- Updated DEM bounds buffer to 100 km from 0.025 degrees
 
 ## [0.1.3]
 
