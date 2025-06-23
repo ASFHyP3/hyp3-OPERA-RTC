@@ -10,7 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.5]
 
 ### Changed
-- Updated DEM bounds buffer from 50 to 100 km
+- Updated DEM bounds buffer from 50 to 200 km
 
 ## [0.1.4]
 
