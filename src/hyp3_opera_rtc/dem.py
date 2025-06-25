@@ -13,20 +13,21 @@ from shapely.geometry import LinearRing, Polygon, box
 
 gdal.UseExceptions()
 
-EARTH_APPROX_CIRCUMFERENCE = 40075017.0
-EARTH_RADIUS = EARTH_APPROX_CIRCUMFERENCE / (2 * np.pi)
+EARTH_APPROX_CIRCUMFERENCE_KM = 40075017.0
+EARTH_RADIUS_KM = EARTH_APPROX_CIRCUMFERENCE_KM / (2 * np.pi)
+DEM_MARGIN_KM = 200
 
 
 def margin_km_to_deg(margin_in_km: float) -> float:
     """Converts a margin value from kilometers to degrees."""
-    km_to_deg_at_equator = 1000.0 / (EARTH_APPROX_CIRCUMFERENCE / 360.0)
+    km_to_deg_at_equator = 1000.0 / (EARTH_APPROX_CIRCUMFERENCE_KM / 360.0)
     margin_in_deg = margin_in_km * km_to_deg_at_equator
     return margin_in_deg
 
 
 def margin_km_to_longitude_deg(margin_in_km: float, lat: float) -> float:
     """Converts a margin value from kilometers to degrees as a function of latitude."""
-    delta_lon = 180 * 1000 * margin_in_km / (np.pi * EARTH_RADIUS * np.cos(np.pi * lat / 180))
+    delta_lon = 180 * 1000 * margin_in_km / (np.pi * EARTH_RADIUS_KM * np.cos(np.pi * lat / 180))
     return delta_lon
 
 
@@ -35,9 +36,8 @@ def polygon_from_bounds(bounds: tuple[float, float, float, float]) -> Polygon:
     lon_min, lat_min, lon_max, lat_max = bounds
     # note we can also use the center lat here
     lat_worst_case = max([lat_min, lat_max])
-    margin_in_km = 200
-    lat_margin = margin_km_to_deg(margin_in_km)
-    lon_margin = margin_km_to_longitude_deg(margin_in_km, lat=lat_worst_case)
+    lat_margin = margin_km_to_deg(DEM_MARGIN_KM)
+    lon_margin = margin_km_to_longitude_deg(DEM_MARGIN_KM, lat=lat_worst_case)
     # Check if the bbox crosses the antimeridian and apply the margin accordingly
     # so that any resultant DEM is split properly by check_dateline
     if lon_max - lon_min > 180:
@@ -173,7 +173,7 @@ def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float, float, 
         ):
             vrt_filename = '/vsicurl/https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1/EPSG4326/EPSG4326.vrt'
             for idx, poly in enumerate(polys):
-                output_path = f'{outfile.stem}_{idx}.tif'
+                output_path = str(outfile.parent / f'{outfile.stem}_{idx}.tif')
                 dem_list.append(output_path)
                 translate_dem(vrt_filename, output_path, poly.bounds)
 

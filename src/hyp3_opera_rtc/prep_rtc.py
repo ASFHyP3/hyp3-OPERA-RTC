@@ -11,7 +11,6 @@ import requests
 from hyp3lib.fetch import download_file
 from hyp3lib.scene import get_download_url
 from jinja2 import Template
-from shapely.geometry import Polygon, box
 
 from hyp3_opera_rtc import dem, orbit
 
@@ -28,23 +27,41 @@ def prep_burst_db(save_dir: Path) -> Path:
     return db_path
 
 
-def get_s1_granule_bbox(granule_path: Path) -> Polygon:
-    with ZipFile(granule_path, 'r') as z:
-        manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
-        with z.open(manifest_path) as m:
-            manifest = ET.parse(m).getroot()
+def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, float, float]:
+    """Extracts the bounding box footprint from the given SLC SAFE archive."""
+    safe_file_name = safe_file_path.stem
 
-    frame_element = next(x for x in manifest.findall('.//metadataObject') if x.get('ID') == 'measurementFrameSet')
-    coords_element = frame_element.find('.//{http://www.opengis.net/gml}coordinates')
-    assert coords_element is not None
+    with ZipFile(safe_file_path) as myzip:
+        with myzip.open(f'{safe_file_name}.SAFE/manifest.safe', 'r') as infile:
+            manifest_tree = ET.parse(infile)
 
-    frame_string = coords_element.text
-    assert frame_string is not None
+    coordinates_elem = manifest_tree.xpath('.//*[local-name()="coordinates"]')
+    if coordinates_elem is None:
+        raise RuntimeError(
+            'Could not find gml:coordinates element within the manifest.safe '
+            'of the provided SAFE archive, cannot determine DEM bounding box.'
+        )
 
-    coord_strings = [pair.split(',') for pair in frame_string.split(' ')]
-    coords = [(float(lon), float(lat)) for lat, lon in coord_strings]
-    footprint = Polygon(coords)
-    return box(*footprint.bounds)
+    assert isinstance(coordinates_elem, ET._Element)
+    coordinates_str = coordinates_elem[0].text
+    assert isinstance(coordinates_str, str)
+    coordinates = coordinates_str.split()
+    lats = [float(coordinate.split(',')[0]) for coordinate in coordinates]
+    lons = [float(coordinate.split(',')[-1]) for coordinate in coordinates]
+
+    lat_min = min(lats)
+    lat_max = max(lats)
+    lon_min = min(lons)
+    lon_max = max(lons)
+
+    # Check if the bbox crosses the antimeridian and "unwrap" the coordinates
+    # so that any resultant DEM is split properly by check_dateline
+    if lon_max - lon_min > 180:
+        lons = [lon + 360 if lon < 0 else lon for lon in lons]
+        lon_min = min(lons)
+        lon_max = max(lons)
+
+    return (lon_min, lat_min, lon_max, lat_max)  # WSEN order
 
 
 def get_granule_cmr(granule: str) -> dict:
@@ -137,8 +154,8 @@ def prep_rtc(
     print(f'Burst database: {db_path}')
 
     dem_path = input_dir / 'dem.tif'
-    granule_bbox = get_s1_granule_bbox(safe_path)
-    dem.download_opera_dem_for_footprint(dem_path, granule_bbox.bounds)
+    granule_bbox = bounding_box_from_slc_granule(safe_path)
+    dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
     print(f'Downloaded DEM: {dem_path}')
 
     runconfig_dict = {
