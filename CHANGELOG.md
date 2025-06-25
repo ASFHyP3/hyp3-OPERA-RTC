@@ -9,6 +9,9 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.4]
 
+### Added
+- DEM creation CLI entrypoint for debugging
+
 ### Changed
 - Update DEM fetching/tiling strategy to match OPERA's.
 - Updated DEM bounds buffer to 100 km from 0.025 degrees
