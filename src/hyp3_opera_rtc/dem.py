@@ -179,19 +179,3 @@ def download_opera_dem_for_footprint(outfile: Path, bounds: tuple[float, float, 
                 translate_dem(vrt_filename, output_path, poly.bounds)
 
             gdal.BuildVRT(str(outfile), dem_list)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description='Download DEM for a given bounding box.')
-    parser.add_argument('--output', type=Path, help='Output VRT file path')
-    parser.add_argument(
-        '--bounds', type=float, nargs=4, help='Bounding box in the form of (lon_min, lat_min, lon_max, lat_max)'
-    )
-    args = parser.parse_args()
-    args.output = Path(args.output).expanduser()
-    args.bounds = tuple(args.bounds)
-    download_opera_dem_for_footprint(args.output, args.bounds)
-
-
-if __name__ == '__main__':
-    main()
