@@ -42,7 +42,8 @@ def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, f
             'of the provided SAFE archive, cannot determine DEM bounding box.'
         )
 
-    assert isinstance(coordinates_elem, ET._Element)
+    assert isinstance(coordinates_elem, list)
+    assert isinstance(coordinates_elem[0], ET._Element)
     coordinates_str = coordinates_elem[0].text
     assert isinstance(coordinates_str, str)
     coordinates = coordinates_str.split()
