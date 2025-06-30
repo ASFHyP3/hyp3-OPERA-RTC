@@ -15,7 +15,7 @@ USER root
 RUN chown rtc_user:rtc_user /home/rtc_user/scratch
 USER rtc_user
 
-RUN curl https://asf-dem-west.s3.amazonaws.com/AUX/opera-burst-bbox-only.sqlite3 -o /home/rtc_user/opera-burst-bbox-only.sqlite3
+RUN curl https://asf-dem-west.s3.amazonaws.com/AUX/burst_db_0.2.0_230831-bbox-only.sqlite -o /home/rtc_user/burst_db_0.2.0_230831-bbox-only.sqlite
 
 COPY --chown=rtc_user:rtc_user . /home/rtc_user/hyp3-opera-rtc/
 RUN conda env create -f /home/rtc_user/hyp3-opera-rtc/environment.yml && \

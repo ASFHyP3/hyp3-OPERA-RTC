@@ -12,6 +12,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - Update DEM fetching/tiling strategy to match OPERA's.
 - Updated DEM bounds buffer to 100 km from 0.025 degrees
+- Update burst database to the OPERA-provided burst_db_0.2.0_230831-bbox-only.sqlite file
 
 ## [0.1.3]
 
