@@ -19,11 +19,9 @@ CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
 
 
 def prep_burst_db(save_dir: Path) -> Path:
-    db_filename = 'opera-burst-bbox-only.sqlite3'
+    db_filename = 'burst_db_0.2.0_230831-bbox-only.sqlite'
     db_path = save_dir / db_filename
-
     shutil.copy(Path.home() / db_filename, db_path)
-
     return db_path
 
 
