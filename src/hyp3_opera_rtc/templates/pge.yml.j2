@@ -2,8 +2,6 @@
 #
 # Adapted from
 # https://github.com/nasa/opera-sds-pcm/blob/9bd74458957197b0c6680540c8d09c26ffab81df/conf/RunConfig.yaml.L2_RTC_S1.jinja2.tmpl
-#
-# TODO: document how to update this file when updating Dockerfile base image, possibly in README
 RunConfig:
   Name: OPERA-RTC-S1-PGE-CONFIG
   Groups:
@@ -66,7 +64,6 @@ RunConfig:
             source_data_access: "https://search.asf.alaska.edu/#/?dataset=SENTINEL-1&productTypes=SLC"
           dynamic_ancillary_file_group:
             dem_file: {{  dem_path  }}
-            # TODO: update descriptions as necessary when new ancillary releases are available
             dem_file_description: "Digital Elevation Model (DEM) for the NASA OPERA project version 1.1 (v1.1) based on the Copernicus DEM 30-m and Copernicus 90-m referenced to the WGS84 ellipsoid"
           static_ancillary_file_group:
             burst_database_file: {{  db_path  }}
