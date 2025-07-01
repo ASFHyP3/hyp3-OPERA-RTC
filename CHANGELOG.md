@@ -10,9 +10,10 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.1.4]
 
 ### Changed
-- Update DEM fetching/tiling strategy to match OPERA's.
+- Updated DEM fetching/tiling strategy to match OPERA's.
 - Updated DEM bounds buffer to 100 km from 0.025 degrees
-- Update burst database to the OPERA-provided burst_db_0.2.0_230831-bbox-only.sqlite file
+- Updated burst database to the OPERA-provided burst_db_0.2.0_230831-bbox-only.sqlite file
+- Updated our [PGE RunConfig template](./src/hyp3_opera_rtc/templates/pge.yml.j2) to more closely align with the [upstream version](https://github.com/nasa/opera-sds-pcm/blob/9bd74458957197b0c6680540c8d09c26ffab81df/conf/RunConfig.yaml.L2_RTC_S1.jinja2.tmpl).
 
 ## [0.1.3]
 
