@@ -167,6 +167,7 @@ def prep_rtc(
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
         'resolution': int(resolution),
+        'data_validity_start_date': '20140403',
     }
 
     render_template(runconfig_dict, work_dir)
