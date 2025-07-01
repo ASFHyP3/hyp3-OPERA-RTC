@@ -39,7 +39,7 @@ RunConfig:
         # RTC static layer product(s) should be considered valid.
         # This field must be provided for RTC-S1 jobs when static layer
         # generation is enabled (see below), and must be of the form YYYYMMDD
-        DataValidityStartDate: 20140403
+        DataValidityStartDate: 20140403 # TODO: make this a jinja parameter?
       QAExecutable:
         Enabled: False
         ProgramPath:
@@ -84,7 +84,7 @@ RunConfig:
             # This field must be provided for RTC-S1 jobs when static layer
             # generation is enabled, and should match the value assigned to
             # DataValidityStartDate above.
-            rtc_s1_static_validity_start_date: 20140403
+            rtc_s1_static_validity_start_date: 20140403 # TODO: make this a jinja parameter?
             product_data_access: "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=RTC"
             static_layers_data_access: "https://search.asf.alaska.edu/#/?dataset=OPERA-S1&productTypes=RTC-STATIC&operaBurstID={burst_id}&end={end_date}"
             save_bursts: True
