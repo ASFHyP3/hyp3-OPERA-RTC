@@ -4,7 +4,6 @@
 # https://github.com/nasa/opera-sds-pcm/blob/9bd74458957197b0c6680540c8d09c26ffab81df/conf/RunConfig.yaml.L2_RTC_S1.jinja2.tmpl
 #
 # TODO: document how to update this file when updating Dockerfile base image, possibly in README
-
 RunConfig:
   Name: OPERA-RTC-S1-PGE-CONFIG
   Groups:
@@ -29,7 +28,6 @@ RunConfig:
         # and must have write permissions for the User/Group used with
         # the "Docker run" command
         OutputProductPath: {{  output_dir  }}
-
         # Path to a scratch directory for the PGE and SAS to store
         # intermediate files that will not be needed after PGE execution
         # completes
