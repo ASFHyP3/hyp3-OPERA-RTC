@@ -16,24 +16,10 @@ RunConfig:
           - {{  orbit_path  }}
       DynamicAncillaryFilesGroup:
         AncillaryFileMap:
-          # Path to the Digital Elevation Model
-          # Must be either a single .tif, or a .vrt that points to one
-          # or more .tif files
           dem_file: {{ dem_path  }}
-          # Burst database, must be an .sqlite3 file
           burst_database_file: {{ db_path  }}
       ProductPathGroup:
-        # Path to where output products should be stored
-        # Must correspond to the file system within the Docker container,
-        # and must have write permissions for the User/Group used with
-        # the "Docker run" command
         OutputProductPath: {{  output_dir  }}
-        # Path to a scratch directory for the PGE and SAS to store
-        # intermediate files that will not be needed after PGE execution
-        # completes
-        # Must correspond to the file system within the Docker container,
-        # and must have write permissions for the User/Group used with
-        # the "Docker run" command
         ScratchPath: {{  scratch_dir  }}
       PrimaryExecutable:
         ProductIdentifier: RTC_S1
@@ -83,7 +69,6 @@ RunConfig:
             # TODO: update descriptions as necessary when new ancillary releases are available
             dem_file_description: "Digital Elevation Model (DEM) for the NASA OPERA project version 1.1 (v1.1) based on the Copernicus DEM 30-m and Copernicus 90-m referenced to the WGS84 ellipsoid"
           static_ancillary_file_group:
-            # burst database sqlite file
             burst_database_file: {{  db_path  }}
           product_group:
             product_version: "1.0"
@@ -121,6 +106,7 @@ RunConfig:
             num_workers: 0
             geocoding:
               memory_mode: auto
+              # TODO: confirm these values
               # Fields to populate the products' metadata required by
               # CEOS Analysis Ready Data specifications
               estimated_geometric_accuracy_bias_x: -0.72
