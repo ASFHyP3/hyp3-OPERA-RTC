@@ -143,7 +143,7 @@ def render_template(params: dict, work_dir: Path) -> None:
         file.write(template_str)
 
 
-def prep_burst_rtc(
+def prep_rtc(
     co_pol_granule: str,
     work_dir: Path,
     resolution: int = 30,
