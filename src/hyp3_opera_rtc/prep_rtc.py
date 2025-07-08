@@ -85,7 +85,7 @@ def granule_exists(granule: str, type: str='burst') -> bool:
     return bool(response['items'])
 
 
-def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
+def parse_response_for_params(response: dict) -> tuple[str, str]:
     assert len(response['items']) == 1
     item = response['items'][0]
 
@@ -102,12 +102,12 @@ def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
 
 def get_granule_burst_params(granule: str) -> tuple[str, str]:
     response = get_burst_granule_cmr(granule)
-    return parse_response_for_burst_params(response)
+    return parse_response_for_params(response)
 
 
 def get_granule_slc_params(granule: str) -> tuple[str, str]:
     response = get_slc_granule_cmr(granule)
-    return parse_response_for_slc_params(response)
+    return parse_response_for_params(response)
 
 
 def validate_slc_co_pol_granule(granule: str) -> bool:
