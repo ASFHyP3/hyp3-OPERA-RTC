@@ -114,7 +114,7 @@ def validate_slc_co_pol_granule(granule: str) -> bool:
     pol = granule.split('_')[4][2:4]
     if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule, slc):
+    if not granule_exists(granule, 'slc'):
         raise ValueError(f'Granule does not exist: {granule}')
 
 
@@ -122,7 +122,7 @@ def validate_burst_co_pol_granule(granule: str) -> None:
     pol = granule.split('_')[4]
     if pol not in {'VV', 'HH'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule, burst):
+    if not granule_exists(granule, 'burst'):
         raise ValueError(f'Granule does not exist: {granule}')
 
 
