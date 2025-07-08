@@ -63,15 +63,25 @@ def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, f
     return (lon_min, lat_min, lon_max, lat_max)  # WSEN order
 
 
-def get_granule_cmr(granule: str) -> dict:
+def get_slc_granule_cmr(granule: str) -> dict:
+    params = (('short_name', 'SENTINEL-1*'), ('granule_ur', granule)) # TODO : Is this the correct wildcard?
+    response = requests.get(CMR_URL, params=params)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_burst_granule_cmr(granule: str) -> dict:
     params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
     response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
     return response.json()
 
 
-def granule_exists(granule: str) -> bool:
-    response = get_granule_cmr(granule)
+def granule_exists(granule: str, type: str='burst') -> bool:
+    if type == 'burst':
+        response = get_granule_cmr(granule)
+    elif type == 'slc':
+        response = get_burst_granule_cmr(granule)
     return bool(response['items'])
 
 
@@ -95,11 +105,19 @@ def get_granule_slc_params(granule: str) -> tuple[str, str]:
     return parse_response_for_slc_params(response)
 
 
-def validate_co_pol_granule(granule: str) -> None:
+def validate_co_pol_slc_granule(granule: str) -> bool:
+    pol = granule.split('_')[4][2:4]
+    if pol in {'VH', 'HV'}:
+        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
+    if not granule_exists(granule, slc):
+        raise ValueError(f'Granule does not exist: {granule}')
+
+
+def validate_co_pol_burst_granule(granule: str) -> None:
     pol = granule.split('_')[4]
     if pol not in {'VV', 'HH'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule):
+    if not granule_exists(granule, burst):
         raise ValueError(f'Granule does not exist: {granule}')
 
 
@@ -120,15 +138,15 @@ def render_template(params: dict, work_dir: Path) -> None:
         file.write(template_str)
 
 
-def prep_rtc(
+def prep_burst_rtc(
     co_pol_granule: str,
     work_dir: Path,
     resolution: int = 30,
 ) -> None:
-    """Prepare data for OPERA RTC processing.
+    """Prepare co_pol data for OPERA RTC processing.
 
     Args:
-        co_pol_granule: Sentinel-1 level-1 co-pol burst granule
+        co_pol_granule: Sentinel-1 level-1 co-pol granule (either burst or SLC)
         work_dir: Working directory for processing
         resolution: Resolution of the output RTC (m)
     """
@@ -138,9 +156,13 @@ def prep_rtc(
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    validate_co_pol_granule(co_pol_granule)
+    if co_pol_granule.endswith('BURST'):
+        validate_co_pol_granule(co_pol_granule)
+        source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
+    else:
+        validate_slc_granule(co_pol_granule)
+        source_slc, opera_burst_id = get_granule_burst_params(co_pol_granule)
 
-    source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
     safe_path = Path(safe_path)
     dual_pol = safe_path.name[14] == 'D'
@@ -181,7 +203,7 @@ def main() -> None:
         S1_245714_IW1_20240809T141633_VV_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('co_pol_granule', help='Sentinel-1 co-pol burst granule')
+    parser.add_argument('--s1c_granule', help='Sentinel-1 co-pol burst granule or SLC')
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
 
@@ -197,8 +219,10 @@ def main() -> None:
             'Earthdata credentials must be present as environment variables, or in your netrc.',
             UserWarning,
         )
-
-    prep_rtc(args.co_pol_granule, args.work_dir, args.resolution)
+    if 'SLC' in args.s1c_granule:
+        prep_slc_rtc(args.s1c_granule, args.work_dir, args.resolution)
+    else:
+        prep_burst_rtc(args.s1c_granule, args.work_dir, args.resolution)
 
 
 if __name__ == '__main__':
