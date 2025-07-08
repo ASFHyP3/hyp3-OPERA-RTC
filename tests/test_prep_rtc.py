@@ -9,9 +9,9 @@ import responses
 from hyp3_opera_rtc import prep_rtc
 
 
-def test_parse_response_for_slc_params():
+def test_parse_response_for_params():
     test_response = json.loads(Path('tests/data/burst_response.json').read_text())
-    slc_name, burst_id = prep_rtc.parse_response_for_slc_params(test_response)
+    slc_name, burst_id = prep_rtc.parse_response_for_params(test_response)
     assert slc_name == 'S1A_IW_SLC__1SDV_20250413T020809_20250413T020836_058732_07464F_EF1E'
     assert burst_id == 't035_073251_iw2'
 
@@ -50,7 +50,7 @@ def test_granule_exists():
         prep_rtc.granule_exists('foo')
 
 
-def test_validate_co_pol_granule():
+def test_validate_burst_co_pol_granule():
     def mock_granule_exists(granule: str) -> bool:
         return granule in [
             'S1_146160_IW1_20241029T095958_VV_592B-BURST',
@@ -58,8 +58,8 @@ def test_validate_co_pol_granule():
         ]
 
     with unittest.mock.patch('hyp3_opera_rtc.prep_rtc.granule_exists', mock_granule_exists):
-        prep_rtc.validate_co_pol_granule('S1_146160_IW1_20241029T095958_VV_592B-BURST')
-        prep_rtc.validate_co_pol_granule('S1_152193_IW3_20250415T143714_HH_EF65-BURST')
+        prep_rtc.validate_burst_co_pol_granule('S1_146160_IW1_20241029T095958_VV_592B-BURST')
+        prep_rtc.validate_burst_co_pol_granule('S1_152193_IW3_20250415T143714_HH_EF65-BURST')
 
         with pytest.raises(
             ValueError, match=r'^S1_073251_IW2_20250413T020809_VH_EF1E-BURST has polarization VH, must be VV or HH'

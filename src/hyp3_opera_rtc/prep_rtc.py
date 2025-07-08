@@ -79,9 +79,9 @@ def get_burst_granule_cmr(granule: str) -> dict:
 
 def granule_exists(granule: str, type: str = 'burst') -> bool:
     if type == 'burst':
-        response = get_granule_cmr(granule)
-    if type == 'slc':
         response = get_burst_granule_cmr(granule)
+    if type == 'slc':
+        response = get_slc_granule_cmr(granule)
     return bool(response['items'])
 
 
