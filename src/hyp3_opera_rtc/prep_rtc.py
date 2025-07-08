@@ -223,6 +223,5 @@ def main() -> None:
     prep_rtc(args.co_pol_granule, args.work_dir, args.resolution)
 
 
-
 if __name__ == '__main__':
     main()
