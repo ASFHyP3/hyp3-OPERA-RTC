@@ -203,7 +203,7 @@ def main() -> None:
         S1_245714_IW1_20240809T141633_VV_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--s1c_granule', help='Sentinel-1 co-pol burst granule or SLC')
+    parser.add_argument('co_pol_granule', help='Sentinel-1 co-pol burst granule or SLC')
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
 
@@ -219,10 +219,9 @@ def main() -> None:
             'Earthdata credentials must be present as environment variables, or in your netrc.',
             UserWarning,
         )
-    if 'SLC' in args.s1c_granule:
-        prep_slc_rtc(args.s1c_granule, args.work_dir, args.resolution)
-    else:
-        prep_burst_rtc(args.s1c_granule, args.work_dir, args.resolution)
+
+    prep_rtc(args.co_pol_granule, args.work_dir, args.resolution)
+
 
 
 if __name__ == '__main__':
