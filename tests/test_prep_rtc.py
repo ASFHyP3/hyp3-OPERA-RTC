@@ -51,7 +51,7 @@ def test_granule_exists():
 
 
 def test_validate_burst_co_pol_granule():
-    def mock_granule_exists(granule: str) -> bool:
+    def mock_granule_exists(granule: str, type: str) -> bool:
         return granule in [
             'S1_146160_IW1_20241029T095958_VV_592B-BURST',
             'S1_152193_IW3_20250415T143714_HH_EF65-BURST',
@@ -64,15 +64,15 @@ def test_validate_burst_co_pol_granule():
         with pytest.raises(
             ValueError, match=r'^S1_073251_IW2_20250413T020809_VH_EF1E-BURST has polarization VH, must be VV or HH'
         ):
-            prep_rtc.validate_co_pol_granule('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
+            prep_rtc.validate_burst_co_pol_granule('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
 
         with pytest.raises(
             ValueError, match=r'^S1_241258_IW1_20250418T105137_HV_57A0-BURST has polarization HV, must be VV or HH'
         ):
-            prep_rtc.validate_co_pol_granule('S1_241258_IW1_20250418T105137_HV_57A0-BURST')
+            prep_rtc.validate_burst_co_pol_granule('S1_241258_IW1_20250418T105137_HV_57A0-BURST')
 
         with pytest.raises(ValueError, match=r'^Granule does not exist: S1_073251_IW2_20250413T020809_VV_EF1E-BURST$'):
-            prep_rtc.validate_co_pol_granule('S1_073251_IW2_20250413T020809_VV_EF1E-BURST')
+            prep_rtc.validate_burst_co_pol_granule('S1_073251_IW2_20250413T020809_VV_EF1E-BURST')
 
 
 def test_get_cross_pol_name():
