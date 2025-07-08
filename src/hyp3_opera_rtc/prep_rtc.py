@@ -100,12 +100,17 @@ def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
     return source_slc, f't{opera_burst_id.lower()}'
 
 
+def get_granule_burst_params(granule: str) -> tuple[str, str]:
+    response = get_burst_granule_cmr(granule)
+    return parse_response_for_burst_params(response)
+
+
 def get_granule_slc_params(granule: str) -> tuple[str, str]:
-    response = get_granule_cmr(granule)
+    response = get_slc_granule_cmr(granule)
     return parse_response_for_slc_params(response)
 
 
-def validate_co_pol_slc_granule(granule: str) -> bool:
+def validate_slc_co_pol_granule(granule: str) -> bool:
     pol = granule.split('_')[4][2:4]
     if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
@@ -113,7 +118,7 @@ def validate_co_pol_slc_granule(granule: str) -> bool:
         raise ValueError(f'Granule does not exist: {granule}')
 
 
-def validate_co_pol_burst_granule(granule: str) -> None:
+def validate_burst_co_pol_granule(granule: str) -> None:
     pol = granule.split('_')[4]
     if pol not in {'VV', 'HH'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
@@ -157,10 +162,10 @@ def prep_burst_rtc(
         d.mkdir(parents=True, exist_ok=True)
 
     if co_pol_granule.endswith('BURST'):
-        validate_co_pol_granule(co_pol_granule)
+        validate_burst_co_pol_granule(co_pol_granule)
         source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
     else:
-        validate_slc_granule(co_pol_granule)
+        validate_slc_co_pol_granule(co_pol_granule)
         source_slc, opera_burst_id = get_granule_burst_params(co_pol_granule)
 
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
