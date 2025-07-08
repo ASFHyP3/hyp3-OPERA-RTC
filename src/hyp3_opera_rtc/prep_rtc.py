@@ -64,7 +64,7 @@ def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, f
 
 
 def get_slc_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1*'), ('granule_ur', granule)) # TODO : Is this the correct wildcard?
+    params = (('short_name', 'SENTINEL-1*'), ('granule_ur', granule))  # TODO : Is this the correct wildcard?
     response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
     return response.json()
@@ -77,10 +77,10 @@ def get_burst_granule_cmr(granule: str) -> dict:
     return response.json()
 
 
-def granule_exists(granule: str, type: str='burst') -> bool:
+def granule_exists(granule: str, type: str = 'burst') -> bool:
     if type == 'burst':
         response = get_granule_cmr(granule)
-    elif type == 'slc':
+    if type == 'slc':
         response = get_burst_granule_cmr(granule)
     return bool(response['items'])
 
