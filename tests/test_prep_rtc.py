@@ -17,12 +17,31 @@ def test_parse_response_for_params():
 
 
 @responses.activate
-def test_granule_exists():
+def test_get_granule_from_cmr():
     responses.get(
         url=prep_rtc.CMR_URL,
         match=[
             responses.matchers.query_param_matcher(
                 {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'S1_073251_IW2_20250413T020809_VV_EF1E-BURST'}
+            )
+        ],
+        json={'items': []},
+    )
+    responses.get(
+        url=prep_rtc.CMR_URL,
+        match=[
+            responses.matchers.query_param_matcher(
+                {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'foo_bad_burst_example_VV_-BURST'}
+            )
+        ],
+        status=400,
+    )
+
+    responses.get(
+        url=prep_rtc.CMR_URL,
+        match=[
+            responses.matchers.query_param_matcher(
+                {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'S1_146160_IW1_20241029T095958_VV_592B-BURST'}
             )
         ],
         json={'items': ['foo']},
@@ -31,48 +50,30 @@ def test_granule_exists():
         url=prep_rtc.CMR_URL,
         match=[
             responses.matchers.query_param_matcher(
-                {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'S1_073251_IW2_20250413T020809_VH_EF1E-BURST'}
+                {'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'S1_152193_IW3_20250415T143714_HH_EF65-BURST'}
             )
         ],
-        json={'items': []},
-    )
-    responses.get(
-        url=prep_rtc.CMR_URL,
-        match=[responses.matchers.query_param_matcher({'short_name': 'SENTINEL-1_BURSTS', 'granule_ur': 'foo'})],
-        status=400,
+        json={'items': ['foo']},
     )
 
-    assert prep_rtc.granule_exists('S1_073251_IW2_20250413T020809_VV_EF1E-BURST')
-
-    assert not prep_rtc.granule_exists('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
+    assert prep_rtc.get_granule_from_cmr('S1_146160_IW1_20241029T095958_VV_592B-BURST')['items']
+    assert prep_rtc.get_granule_from_cmr('S1_152193_IW3_20250415T143714_HH_EF65-BURST')['items']
 
     with pytest.raises(requests.HTTPError):
-        prep_rtc.granule_exists('foo')
+        prep_rtc.get_granule_from_cmr('foo_bad_burst_example_VV_-BURST')
 
+    with pytest.raises(
+        ValueError, match=r'^S1_073251_IW2_20250413T020809_VH_EF1E-BURST has polarization VH, must be VV or HH'
+    ):
+        prep_rtc.get_granule_from_cmr('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
 
-def test_validate_burst_co_pol_granule():
-    def mock_granule_exists(granule: str, type: str) -> bool:
-        return granule in [
-            'S1_146160_IW1_20241029T095958_VV_592B-BURST',
-            'S1_152193_IW3_20250415T143714_HH_EF65-BURST',
-        ]
+    with pytest.raises(
+        ValueError, match=r'^S1_241258_IW1_20250418T105137_HV_57A0-BURST has polarization HV, must be VV or HH'
+    ):
+        prep_rtc.get_granule_from_cmr('S1_241258_IW1_20250418T105137_HV_57A0-BURST')
 
-    with unittest.mock.patch('hyp3_opera_rtc.prep_rtc.granule_exists', mock_granule_exists):
-        prep_rtc.validate_burst_co_pol_granule('S1_146160_IW1_20241029T095958_VV_592B-BURST')
-        prep_rtc.validate_burst_co_pol_granule('S1_152193_IW3_20250415T143714_HH_EF65-BURST')
-
-        with pytest.raises(
-            ValueError, match=r'^S1_073251_IW2_20250413T020809_VH_EF1E-BURST has polarization VH, must be VV or HH'
-        ):
-            prep_rtc.validate_burst_co_pol_granule('S1_073251_IW2_20250413T020809_VH_EF1E-BURST')
-
-        with pytest.raises(
-            ValueError, match=r'^S1_241258_IW1_20250418T105137_HV_57A0-BURST has polarization HV, must be VV or HH'
-        ):
-            prep_rtc.validate_burst_co_pol_granule('S1_241258_IW1_20250418T105137_HV_57A0-BURST')
-
-        with pytest.raises(ValueError, match=r'^Granule does not exist: S1_073251_IW2_20250413T020809_VV_EF1E-BURST$'):
-            prep_rtc.validate_burst_co_pol_granule('S1_073251_IW2_20250413T020809_VV_EF1E-BURST')
+    with pytest.raises(ValueError, match=r'^Granule does not exist: S1_073251_IW2_20250413T020809_VV_EF1E-BURST$'):
+        prep_rtc.get_granule_from_cmr('S1_073251_IW2_20250413T020809_VV_EF1E-BURST')
 
 
 def test_get_cross_pol_name():

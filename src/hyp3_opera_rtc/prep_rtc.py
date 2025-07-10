@@ -16,6 +16,8 @@ from hyp3_opera_rtc import dem, orbit
 
 
 CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
+BURST_SHORT_NAME = 'SENTINEL-1_BURSTS'
+SLC_SHORT_NAME = 'SENTINEL-1*'
 
 
 def prep_burst_db(save_dir: Path) -> Path:
@@ -63,26 +65,9 @@ def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, f
     return (lon_min, lat_min, lon_max, lat_max)  # WSEN order
 
 
-def get_slc_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1*'), ('granule_ur', granule))  # TODO : Is this the correct wildcard?
-    response = requests.get(CMR_URL, params=params)
-    response.raise_for_status()
-    return response.json()
-
-
-def get_burst_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
-    response = requests.get(CMR_URL, params=params)
-    response.raise_for_status()
-    return response.json()
-
-
-def granule_exists(granule: str, type: str = 'burst') -> bool:
-    if type == 'burst':
-        response = get_burst_granule_cmr(granule)
-    if type == 'slc':
-        response = get_slc_granule_cmr(granule)
-    return bool(response['items'])
+def get_granule_params(granule: str) -> tuple[str, str]:
+    response = get_granule_from_cmr(granule)
+    return parse_response_for_params(response)
 
 
 def parse_response_for_params(response: dict) -> tuple[str, str]:
@@ -100,30 +85,27 @@ def parse_response_for_params(response: dict) -> tuple[str, str]:
     return source_slc, f't{opera_burst_id.lower()}'
 
 
-def get_granule_burst_params(granule: str) -> tuple[str, str]:
-    response = get_burst_granule_cmr(granule)
-    return parse_response_for_params(response)
+def get_granule_from_cmr(granule: str) -> dict:
+    if granule.endswith('BURST'):
+        pol = granule.split('_')[4]
+        short_name = BURST_SHORT_NAME
+    else:
+        pol = granule.split('_')[4][2:4]
+        short_name = SLC_SHORT_NAME
 
-
-def get_granule_slc_params(granule: str) -> tuple[str, str]:
-    response = get_slc_granule_cmr(granule)
-    return parse_response_for_params(response)
-
-
-def validate_slc_co_pol_granule(granule: str) -> bool:
-    pol = granule.split('_')[4][2:4]
-    if pol in {'VH', 'HV'}:
-        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule, 'slc'):
-        raise ValueError(f'Granule does not exist: {granule}')
-
-
-def validate_burst_co_pol_granule(granule: str) -> None:
-    pol = granule.split('_')[4]
     if pol not in {'VV', 'HH'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule, 'burst'):
+
+    params = (('short_name', short_name), ('granule_ur', granule))
+    response = requests.get(CMR_URL, params=params)
+    response.raise_for_status()
+    response = response.json()
+
+    granule_exists = bool(response['items'])
+    if not granule_exists:
         raise ValueError(f'Granule does not exist: {granule}')
+
+    return response
 
 
 def get_cross_pol_name(granule: str) -> str:
@@ -161,12 +143,7 @@ def prep_rtc(
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    if co_pol_granule.endswith('BURST'):
-        validate_burst_co_pol_granule(co_pol_granule)
-        source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
-    else:
-        validate_slc_co_pol_granule(co_pol_granule)
-        source_slc, opera_burst_id = get_granule_burst_params(co_pol_granule)
+    source_slc, opera_burst_id = get_granule_params(co_pol_granule)
 
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
     safe_path = Path(safe_path)
