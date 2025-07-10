@@ -1,5 +1,4 @@
 import json
-import unittest.mock
 from pathlib import Path
 
 import pytest
