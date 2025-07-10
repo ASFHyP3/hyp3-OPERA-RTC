@@ -55,8 +55,10 @@ RunConfig:
             safe_file_path:
               - {{  granule_path  }}
             # Optional. Burst ID to process (empty for all bursts)
+            {% if opera_burst_id %}
             burst_id:
               - {{  opera_burst_id  }}
+            {% endif %}
             # Required. List of orbit (EOF) files (min=1)
             orbit_file_path:
               - {{  orbit_path  }}
