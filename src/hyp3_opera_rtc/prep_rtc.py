@@ -16,8 +16,6 @@ from hyp3_opera_rtc import dem, orbit
 
 
 CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
-BURST_SHORT_NAME = 'SENTINEL-1_BURSTS'
-SLC_SHORT_NAME = 'SENTINEL-1*'
 
 
 def prep_burst_db(save_dir: Path) -> Path:
@@ -75,7 +73,7 @@ def get_burst_from_cmr(granule: str) -> dict:
     if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
 
-    response = query_cmr((('short_name', BURST_SHORT_NAME), ('granule_ur', granule)))
+    response = query_cmr((('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule)))
     granule_exists = bool(response['items'])
     if not granule_exists:
         raise ValueError(f'Granule does not exist: {granule}')
@@ -104,7 +102,7 @@ def validate_slc(granule: str) -> str:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
 
     response = query_cmr(
-        (('short_name', SLC_SHORT_NAME), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
+        (('short_name', 'SENTINEL-1*'), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
     )
     granule_exists = bool(response['items'])
     if not granule_exists:
