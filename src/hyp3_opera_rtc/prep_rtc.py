@@ -63,29 +63,25 @@ def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, f
     return (lon_min, lat_min, lon_max, lat_max)  # WSEN order
 
 
-def get_slc_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1*'), ('granule_ur', granule))  # TODO : Is this the correct wildcard?
-    response = requests.get(CMR_URL, params=params)
-    response.raise_for_status()
-    return response.json()
+def get_burst_params(granule: str) -> tuple[str, str]:
+    response = get_burst_from_cmr(granule)
+    return parse_response_for_burst_params(response)
 
 
-def get_burst_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
-    response = requests.get(CMR_URL, params=params)
-    response.raise_for_status()
-    return response.json()
+def get_burst_from_cmr(granule: str) -> dict:
+    pol = granule.split('_')[4]
+    if pol in {'VH', 'HV'}:
+        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
+
+    response = query_cmr((('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule)))
+    granule_exists = bool(response['items'])
+    if not granule_exists:
+        raise ValueError(f'Granule does not exist: {granule}')
+
+    return response
 
 
-def granule_exists(granule: str, type: str = 'burst') -> bool:
-    if type == 'burst':
-        response = get_burst_granule_cmr(granule)
-    if type == 'slc':
-        response = get_slc_granule_cmr(granule)
-    return bool(response['items'])
-
-
-def parse_response_for_params(response: dict) -> tuple[str, str]:
+def parse_response_for_burst_params(response: dict) -> tuple[str, str]:
     assert len(response['items']) == 1
     item = response['items'][0]
 
@@ -100,30 +96,25 @@ def parse_response_for_params(response: dict) -> tuple[str, str]:
     return source_slc, f't{opera_burst_id.lower()}'
 
 
-def get_granule_burst_params(granule: str) -> tuple[str, str]:
-    response = get_burst_granule_cmr(granule)
-    return parse_response_for_params(response)
-
-
-def get_granule_slc_params(granule: str) -> tuple[str, str]:
-    response = get_slc_granule_cmr(granule)
-    return parse_response_for_params(response)
-
-
-def validate_slc_co_pol_granule(granule: str) -> bool:
+def validate_slc(granule: str) -> str:
     pol = granule.split('_')[4][2:4]
     if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule, 'slc'):
+
+    response = query_cmr(
+        (('short_name', 'SENTINEL-1*'), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
+    )
+    granule_exists = bool(response['items'])
+    if not granule_exists:
         raise ValueError(f'Granule does not exist: {granule}')
 
+    return granule
 
-def validate_burst_co_pol_granule(granule: str) -> None:
-    pol = granule.split('_')[4]
-    if pol not in {'VV', 'HH'}:
-        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule, 'burst'):
-        raise ValueError(f'Granule does not exist: {granule}')
+
+def query_cmr(params: tuple) -> dict:
+    response = requests.get(CMR_URL, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_cross_pol_name(granule: str) -> str:
@@ -162,11 +153,10 @@ def prep_rtc(
         d.mkdir(parents=True, exist_ok=True)
 
     if co_pol_granule.endswith('BURST'):
-        validate_burst_co_pol_granule(co_pol_granule)
-        source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
+        source_slc, opera_burst_id = get_burst_params(co_pol_granule)
     else:
-        validate_slc_co_pol_granule(co_pol_granule)
-        source_slc, opera_burst_id = get_granule_burst_params(co_pol_granule)
+        validate_slc(co_pol_granule)
+        source_slc, opera_burst_id = co_pol_granule, None
 
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
     safe_path = Path(safe_path)
@@ -189,13 +179,15 @@ def prep_rtc(
         'orbit_path': str(orbit_path),
         'db_path': str(db_path),
         'dem_path': str(dem_path),
-        'opera_burst_id': opera_burst_id,
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
         'resolution': int(resolution),
         'data_validity_start_date': '20140403',
     }
+
+    if opera_burst_id is not None:
+        runconfig_dict['opera_burst_id'] = opera_burst_id
 
     render_template(runconfig_dict, work_dir)
 
