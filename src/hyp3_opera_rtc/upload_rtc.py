@@ -21,7 +21,6 @@ def make_zip_groups(output_files: list[Path]) -> dict[str, list[Path]]:
 
     for zip_group_name in zip_group_names:
         zip_group = [output_file for output_file in output_files if zip_group_name in output_file.name]
-
         zip_groups[zip_group_name] = zip_group
 
     return zip_groups

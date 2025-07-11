@@ -103,11 +103,9 @@ def validate_slc(granule: str) -> str:
     if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
 
-    response = query_cmr((
-        ('short_name', SLC_SHORT_NAME),
-        ('options[short_name][pattern]', 'true'),
-        ('granule_ur', f'{granule}-SLC')
-    ))
+    response = query_cmr(
+        (('short_name', SLC_SHORT_NAME), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
+    )
     granule_exists = bool(response['items'])
     if not granule_exists:
         raise ValueError(f'Granule does not exist: {granule}')
@@ -191,7 +189,7 @@ def prep_rtc(
     }
 
     if opera_burst_id is not None:
-        runconfig_dict['opera_burst_id'] = opera_burst_id,
+        runconfig_dict['opera_burst_id'] = opera_burst_id
 
     render_template(runconfig_dict, work_dir)
 
