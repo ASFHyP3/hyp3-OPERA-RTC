@@ -51,6 +51,21 @@ def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
 
     zip_s3_keys = [c['Key'] for c in resp['Contents'] if c['Key'].endswith('.zip')]
     assert len(zip_s3_keys) == 27
+    assert all(zip_key.endswith('.zip') for zip_key in zip_s3_keys)
+
+    for zip_key in zip_s3_keys:
+        zip_download_path = rtc_slc_results_dir / 'output.zip'
+        aws.S3_CLIENT.download_file(s3_bucket, zip_key, zip_download_path)
+
+        with ZipFile(zip_download_path) as zf:
+            files_in_zip = [f.filename for f in zf.infolist()]
+            assert len(files_in_zip) == 7
+
+            product_name = files_in_zip[0].split('/')[0]
+            assert all(f.startswith(f'{product_name}/') for f in files_in_zip)
+
+            file_suffixs = set(Path(f).suffix for f in files_in_zip)
+            assert file_suffixs == {'.0', '.xml', '.tif', '.h5', '.png'}
 
 
 def test_make_zip_name(rtc_burst_output_files):
