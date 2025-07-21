@@ -63,19 +63,25 @@ def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, f
     return (lon_min, lat_min, lon_max, lat_max)  # WSEN order
 
 
-def get_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
-    response = requests.get(CMR_URL, params=params)
-    response.raise_for_status()
-    return response.json()
+def get_burst_params(granule: str) -> tuple[str, str]:
+    response = get_burst_from_cmr(granule)
+    return parse_response_for_burst_params(response)
 
 
-def granule_exists(granule: str) -> bool:
-    response = get_granule_cmr(granule)
-    return bool(response['items'])
+def get_burst_from_cmr(granule: str) -> dict:
+    pol = granule.split('_')[4]
+    if pol in {'VH', 'HV'}:
+        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
+
+    response = query_cmr((('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule)))
+    granule_exists = bool(response['items'])
+    if not granule_exists:
+        raise ValueError(f'Granule does not exist: {granule}')
+
+    return response
 
 
-def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
+def parse_response_for_burst_params(response: dict) -> tuple[str, str]:
     assert len(response['items']) == 1
     item = response['items'][0]
 
@@ -90,17 +96,25 @@ def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
     return source_slc, f't{opera_burst_id.lower()}'
 
 
-def get_granule_slc_params(granule: str) -> tuple[str, str]:
-    response = get_granule_cmr(granule)
-    return parse_response_for_slc_params(response)
-
-
-def validate_co_pol_granule(granule: str) -> None:
-    pol = granule.split('_')[4]
-    if pol not in {'VV', 'HH'}:
+def validate_slc(granule: str) -> str:
+    pol = granule.split('_')[4][2:4]
+    if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule):
+
+    response = query_cmr(
+        (('short_name', 'SENTINEL-1*'), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
+    )
+    granule_exists = bool(response['items'])
+    if not granule_exists:
         raise ValueError(f'Granule does not exist: {granule}')
+
+    return granule
+
+
+def query_cmr(params: tuple) -> dict:
+    response = requests.get(CMR_URL, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_cross_pol_name(granule: str) -> str:
@@ -125,10 +139,10 @@ def prep_rtc(
     work_dir: Path,
     resolution: int = 30,
 ) -> None:
-    """Prepare data for OPERA RTC processing.
+    """Prepare co_pol data for OPERA RTC processing.
 
     Args:
-        co_pol_granule: Sentinel-1 level-1 co-pol burst granule
+        co_pol_granule: Sentinel-1 level-1 co-pol granule (either burst or SLC)
         work_dir: Working directory for processing
         resolution: Resolution of the output RTC (m)
     """
@@ -138,9 +152,12 @@ def prep_rtc(
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    validate_co_pol_granule(co_pol_granule)
+    if co_pol_granule.endswith('BURST'):
+        source_slc, opera_burst_id = get_burst_params(co_pol_granule)
+    else:
+        validate_slc(co_pol_granule)
+        source_slc, opera_burst_id = co_pol_granule, None
 
-    source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
     safe_path = Path(safe_path)
     dual_pol = safe_path.name[14] == 'D'
@@ -162,13 +179,15 @@ def prep_rtc(
         'orbit_path': str(orbit_path),
         'db_path': str(db_path),
         'dem_path': str(dem_path),
-        'opera_burst_id': opera_burst_id,
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
         'resolution': int(resolution),
         'data_validity_start_date': '20140403',
     }
+
+    if opera_burst_id is not None:
+        runconfig_dict['opera_burst_id'] = opera_burst_id
 
     render_template(runconfig_dict, work_dir)
 
@@ -181,7 +200,7 @@ def main() -> None:
         S1_245714_IW1_20240809T141633_VV_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('co_pol_granule', help='Sentinel-1 co-pol burst granule')
+    parser.add_argument('co_pol_granule', help='Sentinel-1 co-pol burst granule or SLC')
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
 
