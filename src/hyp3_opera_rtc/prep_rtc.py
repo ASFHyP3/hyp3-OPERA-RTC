@@ -184,8 +184,8 @@ def prep_rtc(
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
-        'resolution': int(resolution),
-        'num_workers': int(num_workers),
+        'resolution': resolution,
+        'num_workers': num_workers,
         'data_validity_start_date': '20140403',
     }
 
