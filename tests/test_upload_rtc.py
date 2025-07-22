@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from zipfile import ZipFile
-
+from collections import Counter
 import pytest
 from hyp3lib import aws
 from moto import mock_aws
@@ -52,19 +52,11 @@ def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
     zip_s3_keys = [c['Key'] for c in resp['Contents'] if c['Key'].endswith('.zip')]
     assert len(zip_s3_keys) == 0
 
-    for zip_key in zip_s3_keys:
-        zip_download_path = rtc_slc_results_dir / 'output.zip'
-        aws.S3_CLIENT.download_file(s3_bucket, zip_key, zip_download_path)
+    uploaded_files = [c['Key'] for c in resp['Contents']]
 
-        with ZipFile(zip_download_path) as zf:
-            files_in_zip = [f.filename for f in zf.infolist()]
-            assert len(files_in_zip) == 7
-
-            product_name = files_in_zip[0].split('/')[0]
-            assert all(f.startswith(f'{product_name}/') for f in files_in_zip)
-
-            file_suffixs = set(Path(f).suffix for f in files_in_zip)
-            assert file_suffixs == {'.0', '.xml', '.tif', '.h5', '.png'}
+    assert len(uploaded_files) == 164
+    file_suffixs = dict(Counter(Path(f).suffix for f in uploaded_files))
+    assert file_suffixs == {'.json': 1, '.log': 1, '.h5': 27, '.xml': 27, '.png': 27, '.tif': 27 * 3}
 
 
 def test_make_zip_name(rtc_burst_output_files):
