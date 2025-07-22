@@ -204,7 +204,12 @@ def main() -> None:
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
 
+    parser.add_argument('++omp-num-threads', type=int, help='The number of OpenMP threads to use')
+
     args, _ = parser.parse_known_args()
+
+    if args.omp_num_threads:
+        os.environ['OMP_NUM_THREADS'] = str(args.omp_num_threads)
 
     username = os.getenv('EARTHDATA_USERNAME')
     password = os.getenv('EARTHDATA_PASSWORD')
