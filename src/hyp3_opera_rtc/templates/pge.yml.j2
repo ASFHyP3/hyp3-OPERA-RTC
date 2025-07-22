@@ -93,7 +93,7 @@ RunConfig:
             # "0" means that the number will be automatically decided based on
             # the number of cores, `OMP_NUM_THREADS` in environment setting,
             # and the number of burst to process in runconfig
-            num_workers: 0
+            num_workers: {{ num_workers }}
             geocoding:
               memory_mode: auto
               # Fields to populate the products' metadata required by

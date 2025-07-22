@@ -6,13 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
-## [0.1.5]
+## [0.1.4]
 
 ### Added
-- Added functionality to `prep_rtc.py` and `upload_rtc.py` to accept co-pol SLCs or bursts. 
-
-## [0.1.4]
+- Added functionality to `prep_rtc.py` and `upload_rtc.py` to accept SLCs or co-pol bursts.
+- Add `--num-workers` as `prep_rtc` cli param
 
 ### Changed
 - Updated DEM fetching/tiling strategy to match OPERA's.

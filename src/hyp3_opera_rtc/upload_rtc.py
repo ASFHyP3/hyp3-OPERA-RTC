@@ -8,22 +8,13 @@ from hyp3lib.aws import upload_file_to_s3
 def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
     output_files = [f for f in output_dir.iterdir() if not f.is_dir()]
 
-    zip_groups = make_zip_groups(output_files)
-    output_zips = [make_zip(zip_group, output_dir / group_name) for group_name, zip_group in zip_groups.items()]
+    burst_count = len([f for f in output_files if f.name.endswith('h5')])
+    if burst_count == 1:
+        output_zip = make_zip(output_files, output_dir)
+        output_files.append(output_zip)
 
-    for output_file in output_files + output_zips:
+    for output_file in output_files:
         upload_file_to_s3(output_file, bucket, bucket_prefix)
-
-
-def make_zip_groups(output_files: list[Path]) -> dict[str, list[Path]]:
-    zip_group_names = [file.name.split('.h5')[0] for file in output_files if file.name.endswith('h5')]
-    zip_groups = {}
-
-    for zip_group_name in zip_group_names:
-        zip_group = [output_file for output_file in output_files if zip_group_name in output_file.name]
-        zip_groups[zip_group_name] = zip_group
-
-    return zip_groups
 
 
 def make_zip(output_files: list[Path], output_dir: Path) -> Path:

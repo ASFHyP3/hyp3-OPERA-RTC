@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -30,17 +31,15 @@ def test_upload_burst_rtc(rtc_burst_results_dir, s3_bucket):
     with ZipFile(zip_download_path) as zf:
         files_in_zip = set([f.filename for f in zf.infolist()])
 
-        assert files_in_zip == set(
-            [
-                f'{product_name}/',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
-            ]
-        )
+        assert files_in_zip == {
+            f'{product_name}/',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
+        }
 
 
 def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
@@ -50,33 +49,19 @@ def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
     resp = aws.S3_CLIENT.list_objects_v2(Bucket=s3_bucket, Prefix=prefix)
 
     zip_s3_keys = [c['Key'] for c in resp['Contents'] if c['Key'].endswith('.zip')]
-    assert len(zip_s3_keys) == 27
-    assert all(zip_key.endswith('.zip') for zip_key in zip_s3_keys)
+    assert len(zip_s3_keys) == 0
 
-    for zip_key in zip_s3_keys:
-        zip_download_path = rtc_slc_results_dir / 'output.zip'
-        aws.S3_CLIENT.download_file(s3_bucket, zip_key, zip_download_path)
+    uploaded_files = [c['Key'] for c in resp['Contents']]
 
-        with ZipFile(zip_download_path) as zf:
-            files_in_zip = [f.filename for f in zf.infolist()]
-            assert len(files_in_zip) == 7
-
-            product_name = files_in_zip[0].split('/')[0]
-            assert all(f.startswith(f'{product_name}/') for f in files_in_zip)
-
-            file_suffixs = set(Path(f).suffix for f in files_in_zip)
-            assert file_suffixs == {'.0', '.xml', '.tif', '.h5', '.png'}
+    assert len(uploaded_files) == 164
+    file_suffixs = dict(Counter(Path(f).suffix for f in uploaded_files))
+    assert file_suffixs == {'.json': 1, '.log': 1, '.h5': 27, '.xml': 27, '.png': 27, '.tif': 27 * 3}
 
 
 def test_make_zip_name(rtc_burst_output_files):
     zip_filename = upload_rtc.make_zip_name([Path(f) for f in rtc_burst_output_files])
 
     assert zip_filename == 'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0'
-
-
-def test_make_zip_groups(rtc_slc_output_files, rtc_slc_results_dir):
-    result_paths = [rtc_slc_results_dir / f for f in rtc_slc_output_files]
-    upload_rtc.make_zip_groups(result_paths)
 
 
 @pytest.fixture
