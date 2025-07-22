@@ -10,7 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 - Added functionality to `prep_rtc.py` and `upload_rtc.py` to accept co-pol SLCs or bursts.
-- Add `++omp-num-threads` as `prep_rtc` cli param
+- Add `--num-workers` as `prep_rtc` cli param
 
 ### Changed
 - Updated DEM fetching/tiling strategy to match OPERA's.
