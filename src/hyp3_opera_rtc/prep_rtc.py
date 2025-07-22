@@ -138,6 +138,7 @@ def prep_rtc(
     co_pol_granule: str,
     work_dir: Path,
     resolution: int = 30,
+    num_workers: int = 0,
 ) -> None:
     """Prepare co_pol data for OPERA RTC processing.
 
@@ -145,6 +146,7 @@ def prep_rtc(
         co_pol_granule: Sentinel-1 level-1 co-pol granule (either burst or SLC)
         work_dir: Working directory for processing
         resolution: Resolution of the output RTC (m)
+        num_workers: Sets number of bursts to run in parallel. 0 will base it on OMP_NUM_THREADS
     """
     scratch_dir = work_dir / 'scratch_dir'
     input_dir = work_dir / 'input_dir'
@@ -183,6 +185,7 @@ def prep_rtc(
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
         'resolution': int(resolution),
+        'num_workers': int(num_workers),
         'data_validity_start_date': '20140403',
     }
 
@@ -204,12 +207,9 @@ def main() -> None:
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
 
-    parser.add_argument('--omp-num-threads', type=int, help='The number of OpenMP threads to use')
+    parser.add_argument('--num-workers', default=0, type=int, help='The number of bursts to run in parallel.')
 
     args, _ = parser.parse_known_args()
-
-    if args.omp_num_threads:
-        os.environ['OMP_NUM_THREADS'] = str(args.omp_num_threads)
 
     username = os.getenv('EARTHDATA_USERNAME')
     password = os.getenv('EARTHDATA_PASSWORD')
@@ -222,7 +222,7 @@ def main() -> None:
             UserWarning,
         )
 
-    prep_rtc(args.co_pol_granule, args.work_dir, args.resolution)
+    prep_rtc(args.co_pol_granule, args.work_dir, args.resolution, args.num_workers)
 
 
 if __name__ == '__main__':
