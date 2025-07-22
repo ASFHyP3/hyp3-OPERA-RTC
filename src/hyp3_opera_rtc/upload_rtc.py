@@ -9,7 +9,12 @@ def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
     output_files = [f for f in output_dir.iterdir() if not f.is_dir()]
 
     zip_groups = make_zip_groups(output_files)
-    output_zips = [make_zip(zip_group, output_dir / group_name) for group_name, zip_group in zip_groups.items()]
+
+    if len(zip_groups) > 1:
+        output_zips = []
+    else:
+        group_name, zip_group = list(zip_groups.items())[0]
+        output_zips = [make_zip(zip_group, output_dir / group_name)]
 
     for output_file in output_files + output_zips:
         upload_file_to_s3(output_file, bucket, bucket_prefix)

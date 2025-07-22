@@ -50,8 +50,7 @@ def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
     resp = aws.S3_CLIENT.list_objects_v2(Bucket=s3_bucket, Prefix=prefix)
 
     zip_s3_keys = [c['Key'] for c in resp['Contents'] if c['Key'].endswith('.zip')]
-    assert len(zip_s3_keys) == 27
-    assert all(zip_key.endswith('.zip') for zip_key in zip_s3_keys)
+    assert len(zip_s3_keys) == 0
 
     for zip_key in zip_s3_keys:
         zip_download_path = rtc_slc_results_dir / 'output.zip'
