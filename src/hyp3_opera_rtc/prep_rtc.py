@@ -204,7 +204,7 @@ def main() -> None:
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
 
-    parser.add_argument('++omp-num-threads', type=int, help='The number of OpenMP threads to use')
+    parser.add_argument('--omp-num-threads', type=int, help='The number of OpenMP threads to use')
 
     args, _ = parser.parse_known_args()
 
