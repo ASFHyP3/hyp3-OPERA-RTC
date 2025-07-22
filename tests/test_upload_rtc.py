@@ -31,17 +31,15 @@ def test_upload_burst_rtc(rtc_burst_results_dir, s3_bucket):
     with ZipFile(zip_download_path) as zf:
         files_in_zip = set([f.filename for f in zf.infolist()])
 
-        assert files_in_zip == set(
-            [
-                f'{product_name}/',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
-                f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
-            ]
-        )
+        assert files_in_zip == {
+            f'{product_name}/',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_BROWSE.png',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.iso.xml',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0.h5',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_mask.tif',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VH.tif',
+            f'{product_name}/OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0_VV.tif',
+        }
 
 
 def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
@@ -64,11 +62,6 @@ def test_make_zip_name(rtc_burst_output_files):
     zip_filename = upload_rtc.make_zip_name([Path(f) for f in rtc_burst_output_files])
 
     assert zip_filename == 'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0'
-
-
-def test_make_zip_groups(rtc_slc_output_files, rtc_slc_results_dir):
-    result_paths = [rtc_slc_results_dir / f for f in rtc_slc_output_files]
-    upload_rtc.make_zip_groups(result_paths)
 
 
 @pytest.fixture
