@@ -1,7 +1,8 @@
 import json
+from collections import Counter
 from pathlib import Path
 from zipfile import ZipFile
-from collections import Counter
+
 import pytest
 from hyp3lib import aws
 from moto import mock_aws
