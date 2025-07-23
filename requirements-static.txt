@@ -1,5 +1,5 @@
-ruff==0.11.11
-mypy==1.15.0
+ruff==0.12.2
+mypy==1.16.1
 lxml-stubs
 types-shapely
 types-requests

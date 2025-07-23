@@ -1,15 +1,42 @@
-from shapely.geometry import box
+from shapely.geometry import Polygon, box
 
 from hyp3_opera_rtc import dem
 
 
-def test_get_granule_url():
-    test_url = 'https://nisar.asf.earthdatacloud.nasa.gov/STATIC/DEM/v1.1/EPSG4326/S10_W020/DEM_S01_00_W001_00.tif'
-    url = dem.get_dem_granule_url(-1, -1)
-    assert url == test_url
+def test_margin_km_to_deg():
+    assert round(dem.margin_km_to_deg(1), 3) == 0.009
+    assert round(dem.margin_km_to_deg(0), 3) == 0.000
+    assert round(dem.margin_km_to_deg(-1), 3) == -0.009
 
 
-def test_get_latlon_pairs():
-    polygon = box(-1, -1, 1, 1)
-    latlon_pairs = dem.get_latlon_pairs(polygon)
-    assert latlon_pairs == [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
+def test_margin_km_to_longitude_deg():
+    assert round(dem.margin_km_to_longitude_deg(1, 0), 3) == 0.009
+    assert round(dem.margin_km_to_longitude_deg(1, 45), 3) == 0.013
+    assert round(dem.margin_km_to_longitude_deg(1, -45), 3) == 0.013
+    assert round(dem.margin_km_to_longitude_deg(0, 0), 3) == 0.000
+    assert round(dem.margin_km_to_longitude_deg(-1, 0), 3) == -0.009
+
+
+def test_polygon_from_bounds():
+    poly = dem.polygon_from_bounds((-1, -1, 0, 0))
+    assert isinstance(poly, Polygon)
+    assert tuple([round(x, 2) for x in poly.bounds]) == (-2.80, -2.80, 1.80, 1.80)
+
+    cross_poly = dem.polygon_from_bounds((180, -1, 181, 0))
+    assert isinstance(cross_poly, Polygon)
+    assert tuple([round(x, 2) for x in cross_poly.bounds]) == (178.20, -2.80, 182.80, 1.80)
+
+
+def test_check_antimeridian():
+    no_cross = box(-1, -1, 0, 0)
+    polys = dem.split_antimeridian(no_cross)
+    assert len(polys) == 1
+    assert polys[0].equals(no_cross)
+
+    cross = box(179, -1, 181, 0)
+    polys = dem.split_antimeridian(cross)
+    negative_side = box(-180, -1, -179, 0)
+    positive_side = box(179, -1, 180, 0)
+    assert len(polys) == 2
+    assert polys[0].equals(negative_side)
+    assert polys[1].equals(positive_side)

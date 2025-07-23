@@ -11,7 +11,6 @@ import requests
 from hyp3lib.fetch import download_file
 from hyp3lib.scene import get_download_url
 from jinja2 import Template
-from shapely.geometry import Polygon, box
 
 from hyp3_opera_rtc import dem, orbit
 
@@ -20,46 +19,69 @@ CMR_URL = 'https://cmr.earthdata.nasa.gov/search/granules.umm_json'
 
 
 def prep_burst_db(save_dir: Path) -> Path:
-    db_filename = 'opera-burst-bbox-only.sqlite3'
+    db_filename = 'burst_db_0.2.0_230831-bbox-only.sqlite'
     db_path = save_dir / db_filename
-
     shutil.copy(Path.home() / db_filename, db_path)
-
     return db_path
 
 
-def get_s1_granule_bbox(granule_path: Path, buffer: float = 0.025) -> Polygon:
-    with ZipFile(granule_path, 'r') as z:
-        manifest_path = [x for x in z.namelist() if x.endswith('manifest.safe')][0]
-        with z.open(manifest_path) as m:
-            manifest = ET.parse(m).getroot()
+def bounding_box_from_slc_granule(safe_file_path: Path) -> tuple[float, float, float, float]:
+    """Extracts the bounding box footprint from the given SLC SAFE archive."""
+    safe_file_name = safe_file_path.stem
 
-    frame_element = next(x for x in manifest.findall('.//metadataObject') if x.get('ID') == 'measurementFrameSet')
-    coords_element = frame_element.find('.//{http://www.opengis.net/gml}coordinates')
-    assert coords_element is not None
+    with ZipFile(safe_file_path) as myzip:
+        with myzip.open(f'{safe_file_name}.SAFE/manifest.safe', 'r') as infile:
+            manifest_tree = ET.parse(infile)
 
-    frame_string = coords_element.text
-    assert frame_string is not None
+    coordinates_elem = manifest_tree.xpath('.//*[local-name()="coordinates"]')
+    if coordinates_elem is None:
+        raise RuntimeError(
+            'Could not find gml:coordinates element within the manifest.safe '
+            'of the provided SAFE archive, cannot determine DEM bounding box.'
+        )
 
-    coord_strings = [pair.split(',') for pair in frame_string.split(' ')]
-    coords = [(float(lon), float(lat)) for lat, lon in coord_strings]
-    footprint = Polygon(coords).buffer(buffer)
-    return box(*footprint.bounds)
+    assert isinstance(coordinates_elem, list)
+    assert isinstance(coordinates_elem[0], ET._Element)
+    coordinates_str = coordinates_elem[0].text
+    assert isinstance(coordinates_str, str)
+    coordinates = coordinates_str.split()
+    lats = [float(coordinate.split(',')[0]) for coordinate in coordinates]
+    lons = [float(coordinate.split(',')[-1]) for coordinate in coordinates]
+
+    lat_min = min(lats)
+    lat_max = max(lats)
+    lon_min = min(lons)
+    lon_max = max(lons)
+
+    # Check if the bbox crosses the antimeridian and "unwrap" the coordinates
+    # so that any resultant DEM is split properly by check_dateline
+    if lon_max - lon_min > 180:
+        lons = [lon + 360 if lon < 0 else lon for lon in lons]
+        lon_min = min(lons)
+        lon_max = max(lons)
+
+    return (lon_min, lat_min, lon_max, lat_max)  # WSEN order
 
 
-def get_granule_cmr(granule: str) -> dict:
-    params = (('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule))
-    response = requests.get(CMR_URL, params=params)
-    response.raise_for_status()
-    return response.json()
+def get_burst_params(granule: str) -> tuple[str, str]:
+    response = get_burst_from_cmr(granule)
+    return parse_response_for_burst_params(response)
 
 
-def granule_exists(granule: str) -> bool:
-    response = get_granule_cmr(granule)
-    return bool(response['items'])
+def get_burst_from_cmr(granule: str) -> dict:
+    pol = granule.split('_')[4]
+    if pol in {'VH', 'HV'}:
+        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
+
+    response = query_cmr((('short_name', 'SENTINEL-1_BURSTS'), ('granule_ur', granule)))
+    granule_exists = bool(response['items'])
+    if not granule_exists:
+        raise ValueError(f'Granule does not exist: {granule}')
+
+    return response
 
 
-def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
+def parse_response_for_burst_params(response: dict) -> tuple[str, str]:
     assert len(response['items']) == 1
     item = response['items'][0]
 
@@ -74,17 +96,25 @@ def parse_response_for_slc_params(response: dict) -> tuple[str, str]:
     return source_slc, f't{opera_burst_id.lower()}'
 
 
-def get_granule_slc_params(granule: str) -> tuple[str, str]:
-    response = get_granule_cmr(granule)
-    return parse_response_for_slc_params(response)
-
-
-def validate_co_pol_granule(granule: str) -> None:
-    pol = granule.split('_')[4]
-    if pol not in {'VV', 'HH'}:
+def validate_slc(granule: str) -> str:
+    pol = granule.split('_')[4][2:4]
+    if pol in {'VH', 'HV'}:
         raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-    if not granule_exists(granule):
+
+    response = query_cmr(
+        (('short_name', 'SENTINEL-1*'), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
+    )
+    granule_exists = bool(response['items'])
+    if not granule_exists:
         raise ValueError(f'Granule does not exist: {granule}')
+
+    return granule
+
+
+def query_cmr(params: tuple) -> dict:
+    response = requests.get(CMR_URL, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_cross_pol_name(granule: str) -> str:
@@ -108,13 +138,15 @@ def prep_rtc(
     co_pol_granule: str,
     work_dir: Path,
     resolution: int = 30,
+    num_workers: int = 0,
 ) -> None:
-    """Prepare data for OPERA RTC processing.
+    """Prepare co_pol data for OPERA RTC processing.
 
     Args:
-        co_pol_granule: Sentinel-1 level-1 co-pol burst granule
+        co_pol_granule: Sentinel-1 level-1 co-pol granule (either burst or SLC)
         work_dir: Working directory for processing
         resolution: Resolution of the output RTC (m)
+        num_workers: Sets number of bursts to run in parallel. 0 will base it on OMP_NUM_THREADS
     """
     scratch_dir = work_dir / 'scratch_dir'
     input_dir = work_dir / 'input_dir'
@@ -122,9 +154,12 @@ def prep_rtc(
     for d in [scratch_dir, input_dir, output_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    validate_co_pol_granule(co_pol_granule)
+    if co_pol_granule.endswith('BURST'):
+        source_slc, opera_burst_id = get_burst_params(co_pol_granule)
+    else:
+        validate_slc(co_pol_granule)
+        source_slc, opera_burst_id = co_pol_granule, None
 
-    source_slc, opera_burst_id = get_granule_slc_params(co_pol_granule)
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)
     safe_path = Path(safe_path)
     dual_pol = safe_path.name[14] == 'D'
@@ -137,7 +172,7 @@ def prep_rtc(
     print(f'Burst database: {db_path}')
 
     dem_path = input_dir / 'dem.tif'
-    granule_bbox = get_s1_granule_bbox(safe_path)
+    granule_bbox = bounding_box_from_slc_granule(safe_path)
     dem.download_opera_dem_for_footprint(dem_path, granule_bbox)
     print(f'Downloaded DEM: {dem_path}')
 
@@ -146,12 +181,16 @@ def prep_rtc(
         'orbit_path': str(orbit_path),
         'db_path': str(db_path),
         'dem_path': str(dem_path),
-        'opera_burst_id': opera_burst_id,
         'scratch_dir': str(scratch_dir),
         'output_dir': str(output_dir),
         'dual_pol': dual_pol,
-        'resolution': int(resolution),
+        'resolution': resolution,
+        'num_workers': num_workers,
+        'data_validity_start_date': '20140403',
     }
+
+    if opera_burst_id is not None:
+        runconfig_dict['opera_burst_id'] = opera_burst_id
 
     render_template(runconfig_dict, work_dir)
 
@@ -164,9 +203,11 @@ def main() -> None:
         S1_245714_IW1_20240809T141633_VV_6B31-BURST
     """
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('co_pol_granule', help='Sentinel-1 co-pol burst granule')
+    parser.add_argument('co_pol_granule', help='Sentinel-1 co-pol burst granule or SLC')
     parser.add_argument('--work-dir', type=Path, required=True, help='Working directory for processing')
     parser.add_argument('--resolution', default=30, type=int, help='Resolution of the output RTC (m)')
+
+    parser.add_argument('--num-workers', default=0, type=int, help='The number of bursts to run in parallel.')
 
     args, _ = parser.parse_known_args()
 
@@ -181,7 +222,7 @@ def main() -> None:
             UserWarning,
         )
 
-    prep_rtc(args.co_pol_granule, args.work_dir, args.resolution)
+    prep_rtc(args.co_pol_granule, args.work_dir, args.resolution, args.num_workers)
 
 
 if __name__ == '__main__':

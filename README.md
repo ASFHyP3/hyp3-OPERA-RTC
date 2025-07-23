@@ -38,7 +38,7 @@ docker run -it --rm \
     [CO_POL_GRANULE]
 ```
 
-Where you replace `[CO_POL_GRANULE]` with the name of the Sentinel-1 co-pol burst SLC scene
+Where you replace `[CO_POL_GRANULE]` with the name of the Sentinel-1 co-pol burst or SLC scene
 for which to generate the OPERA RTC product.
 Here are some useful examples:
 
@@ -49,7 +49,7 @@ Here are some useful examples:
 
 ## Architecture
 
-The plugin is composed of three nested docker environments that depend on eachother. They are laid out as below:
+The plugin is composed of three nested docker environments that depend on each other. They are laid out as below:
 
 ```
 +-------------------------+

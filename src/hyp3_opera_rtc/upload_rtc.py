@@ -8,9 +8,12 @@ from hyp3lib.aws import upload_file_to_s3
 def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
     output_files = [f for f in output_dir.iterdir() if not f.is_dir()]
 
-    output_zip = make_zip(output_files, output_dir)
+    burst_count = len([f for f in output_files if f.name.endswith('h5')])
+    if burst_count == 1:
+        output_zip = make_zip(output_files, output_dir)
+        output_files.append(output_zip)
 
-    for output_file in output_files + [output_zip]:
+    for output_file in output_files:
         upload_file_to_s3(output_file, bucket, bucket_prefix)
 
 
@@ -34,7 +37,7 @@ def make_zip(output_files: list[Path], output_dir: Path) -> Path:
 
 
 def make_zip_name(product_files: list[Path]) -> str:
-    h5_file = next(f for f in product_files if f.name.endswith('h5'))
+    h5_file = [f for f in product_files if f.name.endswith('h5')][0]
 
     return h5_file.name.split('.h5')[0]
 
