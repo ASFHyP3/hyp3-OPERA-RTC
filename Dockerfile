@@ -1,4 +1,4 @@
-FROM ghcr.io/nasa/opera-sds-pge/opera_pge/rtc_s1:2.1.1
+FROM ghcr.io/nasa/opera-sds-pge/opera_pge/rtc_s1:2.1.3
 
 # For opencontainers label definitions, see:
 #    https://github.com/opencontainers/image-spec/blob/master/annotations.md
