@@ -8,11 +8,6 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.4]
 
-### Changed
-- Updated OPERA PGE container version to 2.1.3.
-
-## [0.1.4]
-
 ### Added
 - Added functionality to `prep_rtc.py` and `upload_rtc.py` to accept SLCs or co-pol bursts.
 - Add `--num-workers` as `prep_rtc` cli param
