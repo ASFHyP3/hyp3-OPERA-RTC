@@ -63,12 +63,13 @@ def update_xml_with_asf_lineage(xml_path: Path) -> None:
     gco = '{http://www.isotc211.org/2005/gco}'
     lineage_tag_path = f'.//{gmd}LI_Lineage/{gmd}statement/{gco}CharacterString'
 
-    lineage_seach = iso_tree.findall(lineage_tag_path)
-    if len(lineage_seach) == 0:
+    lineage_search = iso_tree.findall(lineage_tag_path)
+    if len(lineage_search) == 0:
         raise FailedToFindLineageStatementError()
 
-    lineage = lineage_seach[0]
+    lineage = lineage_search[0]
     version = hyp3_opera_rtc.__version__
+    assert lineage.text is not None
     lineage.text = f'{lineage.text.replace("JPL", "ASF")} via HyP3 OPERA-RTC v{version}'
 
     iso_tree.write(str(xml_path))
