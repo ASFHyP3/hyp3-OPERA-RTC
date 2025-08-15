@@ -15,7 +15,7 @@ def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
         output_files.append(output_zip)
 
     for output_file in output_files:
-        upload_file_to_s3(output_file, bucket, bucket_prefix)
+        upload_file_to_s3(output_file, bucket, bucket_prefix, chunk_size=100_000_000)
 
 
 def make_zip(output_files: list[Path], output_dir: Path) -> Path:

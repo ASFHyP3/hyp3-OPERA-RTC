@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5]
+
+### Changed
+- Avoid multipart uploads by using a very large chunk_size so the S3 ETag will always be an md5 checksum.
+
 ## [0.1.4]
 
 ### Added
