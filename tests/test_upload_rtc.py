@@ -2,8 +2,8 @@ import json
 import shutil
 from collections import Counter
 from pathlib import Path
+from unittest.mock import call, patch
 from zipfile import ZipFile
-from unittest.mock import patch, call
 
 import pytest
 from hyp3lib import aws

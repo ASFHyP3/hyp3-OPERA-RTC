@@ -4,6 +4,7 @@ from shutil import copyfile, make_archive
 from xml.etree import ElementTree as et
 
 from hyp3lib.aws import upload_file_to_s3
+
 import hyp3_opera_rtc
 
 
