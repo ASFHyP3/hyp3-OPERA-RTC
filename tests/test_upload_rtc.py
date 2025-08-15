@@ -104,6 +104,15 @@ def test_get_xml_with_asf_lineage(iso_xml_path):
         assert f'via HyP3 OPERA-RTC v{version}' in xml_text
 
 
+def test_cant_find_lineage_in_xml(tmp_path):
+    xml_path = tmp_path / 'f.xml'
+    with xml_path.open(mode='w') as f:
+        f.write('<bad><xml><structure></structure></xml></bad>')
+
+    with pytest.raises(upload_rtc.FailedToFindLineageStatementError):
+        upload_rtc.update_xml_with_asf_lineage(xml_path)
+
+
 @pytest.fixture
 def iso_xml_path(tmp_path):
     xml_output_path = tmp_path / 'opera_v1.0.iso.xml'

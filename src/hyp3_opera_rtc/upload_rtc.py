@@ -65,7 +65,7 @@ def update_xml_with_asf_lineage(xml_path: Path) -> None:
 
     lineage_search = iso_tree.findall(lineage_tag_path)
     if len(lineage_search) == 0:
-        raise FailedToFindLineageStatementError()
+        raise FailedToFindLineageStatementError('Failed to find lineage statement in iso xml')
 
     lineage = lineage_search[0]
     version = hyp3_opera_rtc.__version__
