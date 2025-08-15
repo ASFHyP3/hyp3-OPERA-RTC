@@ -4,6 +4,7 @@ from shutil import copyfile, make_archive
 from xml.etree import ElementTree as et
 
 from hyp3lib.aws import upload_file_to_s3
+import hyp3_opera_rtc
 
 
 class FailedToFindLineageStatementError(Exception):
@@ -66,7 +67,8 @@ def update_xml_with_asf_lineage(xml_path: Path) -> None:
         raise FailedToFindLineageStatementError()
 
     lineage = lineage_seach[0]
-    lineage.text = f'{lineage.text.replace("JPL", "ASF")} via HyP3 OPERA-RTC v0.1.4'
+    version = hyp3_opera_rtc.__version__
+    lineage.text = f'{lineage.text.replace("JPL", "ASF")} via HyP3 OPERA-RTC v{version}'
 
     iso_tree.write(str(xml_path))
 
@@ -85,11 +87,7 @@ def main() -> None:
     parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
 
     args, _ = parser.parse_known_args()
-
-    try:
-        update_xmls_with_asf_lineage(args.output_dir)
-    except FailedToFindLineageStatementError:
-        print('failed to update lineage statement in .iso.xml')
+    update_xmls_with_asf_lineage(args.output_dir)
 
     if not args.bucket:
         print('No bucket provided, skipping upload')

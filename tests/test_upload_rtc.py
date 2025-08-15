@@ -10,6 +10,7 @@ from hyp3lib import aws
 from moto import mock_aws
 from moto.core import patch_client
 
+import hyp3_opera_rtc
 from hyp3_opera_rtc import upload_rtc
 
 
@@ -68,7 +69,7 @@ def test_make_zip_name(rtc_burst_output_files):
 
 @patch('hyp3_opera_rtc.upload_rtc.update_xml_with_asf_lineage')
 def test_update_xmls_with_slc_results(update_mock, rtc_slc_results_dir):
-    upload_rtc.update_xmls(rtc_slc_results_dir)
+    upload_rtc.update_xmls_with_asf_lineage(rtc_slc_results_dir)
 
     assert len(update_mock.call_args_list) == 27
     assert all(call[0][0].suffix == '.xml' for call in update_mock.call_args_list)
@@ -76,29 +77,31 @@ def test_update_xmls_with_slc_results(update_mock, rtc_slc_results_dir):
 
 @patch('hyp3_opera_rtc.upload_rtc.update_xml_with_asf_lineage')
 def test_update_xmls(update_mock, tmp_path):
-    upload_rtc.update_xmls(tmp_path)
+    upload_rtc.update_xmls_with_asf_lineage(tmp_path)
     update_mock.assert_not_called()
 
     for file in ['f.txt', 'f.xml', 'f.json', 'f2.xml']:
         (tmp_path / file).touch()
 
-    upload_rtc.update_xmls(tmp_path)
+    upload_rtc.update_xmls_with_asf_lineage(tmp_path)
     calls = [call(tmp_path / 'f.xml'), call(tmp_path / 'f2.xml')]
     update_mock.assert_has_calls(calls, any_order=True)
 
 
 def test_get_xml_with_asf_lineage(iso_xml_path):
+    version = hyp3_opera_rtc.__version__
+
     with iso_xml_path.open() as f:
         xml_text = f.read()
         assert 'ASF' not in xml_text
-        assert 'via HyP3 OPERA-RTC v0.1.4' not in xml_text
+        assert f'via HyP3 OPERA-RTC {version}' not in xml_text
 
     upload_rtc.update_xml_with_asf_lineage(iso_xml_path)
     with iso_xml_path.open() as f:
         xml_text = f.read()
 
         assert 'ASF' in xml_text
-        assert 'via HyP3 OPERA-RTC v0.1.4' in xml_text
+        assert f'via HyP3 OPERA-RTC v{version}' in xml_text
 
 
 @pytest.fixture
