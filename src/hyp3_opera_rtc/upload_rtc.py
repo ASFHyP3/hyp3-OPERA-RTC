@@ -1,8 +1,15 @@
 import argparse
 from pathlib import Path
 from shutil import copyfile, make_archive
+from xml.etree import ElementTree as et
 
 from hyp3lib.aws import upload_file_to_s3
+
+import hyp3_opera_rtc
+
+
+class FailedToFindLineageStatementError(Exception):
+    pass
 
 
 def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
@@ -42,6 +49,32 @@ def make_zip_name(product_files: list[Path]) -> str:
     return h5_file.name.split('.h5')[0]
 
 
+def update_xmls_with_asf_lineage(output_dir: Path) -> None:
+    xml_paths = [f for f in output_dir.iterdir() if f.suffix == '.xml']
+
+    for xml_path in xml_paths:
+        update_xml_with_asf_lineage(xml_path)
+
+
+def update_xml_with_asf_lineage(xml_path: Path) -> None:
+    iso_tree = et.parse(str(xml_path))
+
+    gmd = '{http://www.isotc211.org/2005/gmd}'
+    gco = '{http://www.isotc211.org/2005/gco}'
+    lineage_tag_path = f'.//{gmd}LI_Lineage/{gmd}statement/{gco}CharacterString'
+
+    lineage_search = iso_tree.findall(lineage_tag_path)
+    if len(lineage_search) == 0:
+        raise FailedToFindLineageStatementError('Failed to find lineage statement in iso xml')
+
+    lineage = lineage_search[0]
+    version = hyp3_opera_rtc.__version__
+    assert lineage.text is not None
+    lineage.text = f'{lineage.text.replace("JPL", "ASF")} via HyP3 OPERA-RTC v{version}'
+
+    iso_tree.write(str(xml_path))
+
+
 def main() -> None:
     """Upload results of OPERA RTC.
 
@@ -56,6 +89,7 @@ def main() -> None:
     parser.add_argument('--bucket-prefix', default='', help='Add a bucket prefix to products')
 
     args, _ = parser.parse_known_args()
+    update_xmls_with_asf_lineage(args.output_dir)
 
     if not args.bucket:
         print('No bucket provided, skipping upload')

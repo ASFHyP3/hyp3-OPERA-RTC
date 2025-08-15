@@ -1,6 +1,8 @@
 import json
+import shutil
 from collections import Counter
 from pathlib import Path
+from unittest.mock import call, patch
 from zipfile import ZipFile
 
 import pytest
@@ -8,6 +10,7 @@ from hyp3lib import aws
 from moto import mock_aws
 from moto.core import patch_client
 
+import hyp3_opera_rtc
 from hyp3_opera_rtc import upload_rtc
 
 
@@ -64,6 +67,60 @@ def test_make_zip_name(rtc_burst_output_files):
     assert zip_filename == 'OPERA_L2_RTC-S1_T115-245714-IW1_20240809T141633Z_20250411T185446Z_S1A_30_v1.0'
 
 
+@patch('hyp3_opera_rtc.upload_rtc.update_xml_with_asf_lineage')
+def test_update_xmls_with_slc_results(update_mock, rtc_slc_results_dir):
+    upload_rtc.update_xmls_with_asf_lineage(rtc_slc_results_dir)
+
+    assert len(update_mock.call_args_list) == 27
+    assert all(call[0][0].suffix == '.xml' for call in update_mock.call_args_list)
+
+
+@patch('hyp3_opera_rtc.upload_rtc.update_xml_with_asf_lineage')
+def test_update_xmls(update_mock, tmp_path):
+    upload_rtc.update_xmls_with_asf_lineage(tmp_path)
+    update_mock.assert_not_called()
+
+    for file in ['f.txt', 'f.xml', 'f.json', 'f2.xml']:
+        (tmp_path / file).touch()
+
+    upload_rtc.update_xmls_with_asf_lineage(tmp_path)
+    calls = [call(tmp_path / 'f.xml'), call(tmp_path / 'f2.xml')]
+    update_mock.assert_has_calls(calls, any_order=True)
+
+
+def test_get_xml_with_asf_lineage(iso_xml_path):
+    version = hyp3_opera_rtc.__version__
+
+    with iso_xml_path.open() as f:
+        xml_text = f.read()
+        assert 'ASF' not in xml_text
+        assert f'via HyP3 OPERA-RTC {version}' not in xml_text
+
+    upload_rtc.update_xml_with_asf_lineage(iso_xml_path)
+    with iso_xml_path.open() as f:
+        xml_text = f.read()
+
+        assert 'ASF' in xml_text
+        assert f'via HyP3 OPERA-RTC v{version}' in xml_text
+
+
+def test_cant_find_lineage_in_xml(tmp_path):
+    xml_path = tmp_path / 'f.xml'
+    with xml_path.open(mode='w') as f:
+        f.write('<bad><xml><structure></structure></xml></bad>')
+
+    with pytest.raises(upload_rtc.FailedToFindLineageStatementError):
+        upload_rtc.update_xml_with_asf_lineage(xml_path)
+
+
+@pytest.fixture
+def iso_xml_path(tmp_path):
+    xml_output_path = tmp_path / 'opera_v1.0.iso.xml'
+    shutil.copy(Path(__file__).parent / 'data' / 'opera_v1.0.iso.xml', xml_output_path)
+
+    return xml_output_path
+
+
 @pytest.fixture
 def rtc_burst_results_dir(tmp_path, rtc_burst_output_files):
     (tmp_path / 'burst-dir').mkdir(parents=True)
@@ -76,7 +133,7 @@ def rtc_burst_results_dir(tmp_path, rtc_burst_output_files):
 
 @pytest.fixture
 def rtc_slc_results_dir(tmp_path, rtc_slc_output_files):
-    (tmp_path / 'burst-dir').mkdir(parents=True)
+    (tmp_path / 'slc-dir').mkdir(parents=True)
 
     for file in rtc_slc_output_files:
         (tmp_path / file).touch()
