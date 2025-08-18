@@ -88,27 +88,18 @@ def test_update_xmls(update_mock, tmp_path):
     update_mock.assert_has_calls(calls, any_order=True)
 
 
-def test_get_xml_with_asf_lineage(iso_xml_path):
-    version = hyp3_opera_rtc.__version__
-
-    with iso_xml_path.open() as f:
-        xml_lines = f.readlines()
-
+@patch.object(hyp3_opera_rtc, '__version__', '1.0.0')
+def test_get_xml_with_asf_lineage(iso_xml_path, updated_xml_path):
     upload_rtc.update_xml_with_asf_lineage(iso_xml_path)
 
-    def is_updated_lineage_statment(text: str) -> bool:
-        return 'ASF' in text and f'via HyP3 OPERA-RTC v{version}' in text
+    with updated_xml_path.open() as expected_file, iso_xml_path.open() as xml_file:
+        expected = expected_file.read()
+        updated = xml_file.read()
 
-    with iso_xml_path.open() as f:
-        updated_xml_lines = f.readlines()
+        with (Path(__file__).parent / 'data' / 'test-output-opera_v1.0.iso.xml').open('w') as f:
+            f.write(updated)
+        assert expected == updated
 
-        assert all(
-            old_line == updated_line
-            for old_line, updated_line in zip(xml_lines, updated_xml_lines)
-            if not is_updated_lineage_statment(updated_line)
-        )
-
-        assert sum(is_updated_lineage_statment(line) for line in updated_xml_lines) == 1
 
 
 def test_cant_find_lineage_in_xml(tmp_path):
@@ -124,6 +115,14 @@ def test_cant_find_lineage_in_xml(tmp_path):
 def iso_xml_path(tmp_path):
     xml_output_path = tmp_path / 'opera_v1.0.iso.xml'
     shutil.copy(Path(__file__).parent / 'data' / 'opera_v1.0.iso.xml', xml_output_path)
+
+    return xml_output_path
+
+
+@pytest.fixture
+def updated_xml_path(tmp_path):
+    xml_output_path = tmp_path / 'updated-opera_v1.0.iso.xml'
+    shutil.copy(Path(__file__).parent / 'data' / 'updated-opera_v1.0.iso.xml', xml_output_path)
 
     return xml_output_path
 
