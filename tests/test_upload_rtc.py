@@ -92,16 +92,23 @@ def test_get_xml_with_asf_lineage(iso_xml_path):
     version = hyp3_opera_rtc.__version__
 
     with iso_xml_path.open() as f:
-        xml_text = f.read()
-        assert 'ASF' not in xml_text
-        assert f'via HyP3 OPERA-RTC {version}' not in xml_text
+        xml_lines = f.readlines()
 
     upload_rtc.update_xml_with_asf_lineage(iso_xml_path)
-    with iso_xml_path.open() as f:
-        xml_text = f.read()
 
-        assert 'ASF' in xml_text
-        assert f'via HyP3 OPERA-RTC v{version}' in xml_text
+    def is_lineage_statment(text: str) -> bool:
+        return 'ASF' in text and f'via HyP3 OPERA-RTC v{version}' in text
+
+    with iso_xml_path.open() as f:
+        updated_xml_lines = f.readlines()
+
+        assert all(
+            old_line == updated_line
+            for old_line, updated_line in zip(xml_lines, updated_xml_lines)
+            if not is_lineage_statment(updated_line)
+        )
+
+        assert sum(is_lineage_statment(line) for line in updated_xml_lines) == 1
 
 
 def test_cant_find_lineage_in_xml(tmp_path):
