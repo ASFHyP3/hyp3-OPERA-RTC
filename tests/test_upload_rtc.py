@@ -99,7 +99,6 @@ def test_get_xml_with_asf_lineage(iso_xml_path, updated_xml_path):
         assert expected == updated
 
 
-
 def test_cant_find_lineage_in_xml(tmp_path):
     xml_path = tmp_path / 'f.xml'
     with xml_path.open(mode='w') as f:
