@@ -96,8 +96,6 @@ def test_get_xml_with_asf_lineage(iso_xml_path, updated_xml_path):
         expected = expected_file.read()
         updated = xml_file.read()
 
-        with (Path(__file__).parent / 'data' / 'test-output-opera_v1.0.iso.xml').open('w') as f:
-            f.write(updated)
         assert expected == updated
 
 
