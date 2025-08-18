@@ -77,8 +77,9 @@ def update_xml_with_asf_lineage(xml_path: Path) -> None:
     with xml_path.open('r') as f:
         xml_text = f.read()
 
+    updated_xml = xml_text.replace(old_lineage, new_lineage)
+
     with xml_path.open('w') as f:
-        updated_xml = xml_text.replace(old_lineage, new_lineage)
         f.write(updated_xml)
 
 
