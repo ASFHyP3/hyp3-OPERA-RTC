@@ -89,7 +89,7 @@ def test_update_xmls(update_mock, tmp_path):
 
 
 @patch.object(hyp3_opera_rtc, '__version__', '1.0.0')
-def test_get_xml_with_asf_lineage(iso_xml_path, tmp_path):
+def test_get_xml_with_asf_lineage(iso_xml_path):
     upload_rtc.update_xml_with_asf_lineage(iso_xml_path)
 
     expected_updated_xml = Path(__file__).parent / 'data' / 'updated-opera_v1.0.iso.xml'
