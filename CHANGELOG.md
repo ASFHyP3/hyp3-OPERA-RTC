@@ -10,7 +10,7 @@ and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Lineage update keep ISO XML file formatted the same as original file
+- Fix lineage statement replacement to keep ISO XML file formatted the same as original file
 
 ## [0.1.6]
 
