@@ -70,9 +70,17 @@ def update_xml_with_asf_lineage(xml_path: Path) -> None:
     lineage = lineage_search[0]
     version = hyp3_opera_rtc.__version__
     assert lineage.text is not None
-    lineage.text = f'{lineage.text.replace("JPL", "ASF")} via HyP3 OPERA-RTC v{version}'
 
-    iso_tree.write(str(xml_path))
+    old_lineage = lineage.text
+    new_lineage = f'{old_lineage.replace("JPL", "ASF")} via HyP3 OPERA-RTC v{version}'
+
+    with xml_path.open('r') as f:
+        xml_text = f.read()
+
+    updated_xml = xml_text.replace(old_lineage, new_lineage)
+
+    with xml_path.open('w') as f:
+        f.write(updated_xml)
 
 
 def main() -> None:
