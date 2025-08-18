@@ -88,20 +88,14 @@ def test_update_xmls(update_mock, tmp_path):
     update_mock.assert_has_calls(calls, any_order=True)
 
 
+@patch.object(hyp3_opera_rtc, '__version__', '1.0.0')
 def test_get_xml_with_asf_lineage(iso_xml_path):
-    version = hyp3_opera_rtc.__version__
-
-    with iso_xml_path.open() as f:
-        xml_text = f.read()
-        assert 'ASF' not in xml_text
-        assert f'via HyP3 OPERA-RTC {version}' not in xml_text
-
     upload_rtc.update_xml_with_asf_lineage(iso_xml_path)
-    with iso_xml_path.open() as f:
-        xml_text = f.read()
 
-        assert 'ASF' in xml_text
-        assert f'via HyP3 OPERA-RTC v{version}' in xml_text
+    expected_updated_xml = Path(__file__).parent / 'data' / 'updated-opera_v1.0.iso.xml'
+
+    expected, updated = expected_updated_xml.read_text(), iso_xml_path.read_text()
+    assert expected == updated
 
 
 def test_cant_find_lineage_in_xml(tmp_path):
