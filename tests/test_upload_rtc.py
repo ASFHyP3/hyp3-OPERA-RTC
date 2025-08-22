@@ -61,6 +61,18 @@ def test_upload_slc_rtc(rtc_slc_results_dir, s3_bucket):
     assert file_suffixs == {'.json': 1, '.log': 1, '.h5': 27, '.xml': 27, '.png': 27, '.tif': 27 * 3}
 
 
+def test_upload_slc_rtc_with_existing_objects(rtc_slc_results_dir, s3_bucket):
+    prefix = 'myPrefix'
+    aws.S3_CLIENT.put_object(Bucket=s3_bucket, Key=f'{prefix}/foo.txt')
+    aws.S3_CLIENT.put_object(Bucket=s3_bucket, Key=f'{prefix}/bar.json')
+
+    upload_rtc.upload_rtc(s3_bucket, prefix, rtc_slc_results_dir)
+
+    resp = aws.S3_CLIENT.list_objects_v2(Bucket=s3_bucket, Prefix=prefix)
+    file_suffixes = dict(Counter(Path(obj['Key']).suffix for obj in resp['Contents']))
+    assert file_suffixes == {'.json': 1, '.log': 1, '.h5': 27, '.xml': 27, '.png': 27, '.tif': 27 * 3}
+
+
 def test_make_zip_name(rtc_burst_output_files):
     zip_filename = upload_rtc.make_zip_name([Path(f) for f in rtc_burst_output_files])
 
