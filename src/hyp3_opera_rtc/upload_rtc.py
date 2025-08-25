@@ -3,13 +3,19 @@ from pathlib import Path
 from shutil import copyfile, make_archive
 from xml.etree import ElementTree as et
 
-from hyp3lib.aws import upload_file_to_s3
+from hyp3lib import aws
 
 import hyp3_opera_rtc
 
 
 class FailedToFindLineageStatementError(Exception):
     pass
+
+
+def delete_prefix(bucket: str, bucket_prefix: str) -> None:
+    response = aws.S3_CLIENT.list_objects_v2(Bucket=bucket, Prefix=bucket_prefix)
+    for obj in response.get('Contents', []):
+        aws.S3_CLIENT.delete_object(Bucket=bucket, Key=obj['Key'])
 
 
 def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
@@ -20,8 +26,9 @@ def upload_rtc(bucket: str, bucket_prefix: str, output_dir: Path) -> None:
         output_zip = make_zip(output_files, output_dir)
         output_files.append(output_zip)
 
+    delete_prefix(bucket, bucket_prefix)
     for output_file in output_files:
-        upload_file_to_s3(output_file, bucket, bucket_prefix, chunk_size=100_000_000)
+        aws.upload_file_to_s3(output_file, bucket, bucket_prefix, chunk_size=100_000_000)
 
 
 def make_zip(output_files: list[Path], output_dir: Path) -> Path:

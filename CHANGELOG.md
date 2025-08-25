@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [PEP 440](https://www.python.org/dev/peps/pep-0440/)
 and uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8]
+
+### Fixed
+- `upload_rtc.py` now deletes any pre-existing objects from S3 prior to uploading output files. Eliminates duplicate
+  output files in the rare case where a HyP3 job attempt is terminated in the middle of uploading objects and then later
+  retried.
+
 ## [0.1.7]
 
 ### Fixed
