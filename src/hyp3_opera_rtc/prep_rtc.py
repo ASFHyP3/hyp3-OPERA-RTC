@@ -96,21 +96,6 @@ def parse_response_for_burst_params(response: dict) -> tuple[str, str]:
     return source_slc, f't{opera_burst_id.lower()}'
 
 
-def validate_slc(granule: str) -> str:
-    pol = granule.split('_')[4][2:4]
-    if pol in {'VH', 'HV'}:
-        raise ValueError(f'{granule} has polarization {pol}, must be VV or HH')
-
-    response = query_cmr(
-        (('short_name', 'SENTINEL-1*'), ('options[short_name][pattern]', 'true'), ('granule_ur', f'{granule}-SLC'))
-    )
-    granule_exists = bool(response['items'])
-    if not granule_exists:
-        raise ValueError(f'Granule does not exist: {granule}')
-
-    return granule
-
-
 def query_cmr(params: tuple) -> dict:
     response = requests.get(CMR_URL, params=params)
     response.raise_for_status()
@@ -157,7 +142,6 @@ def prep_rtc(
     if co_pol_granule.endswith('BURST'):
         source_slc, opera_burst_id = get_burst_params(co_pol_granule)
     else:
-        validate_slc(co_pol_granule)
         source_slc, opera_burst_id = co_pol_granule, None
 
     safe_path = download_file(get_download_url(source_slc), directory=str(input_dir), chunk_size=10485760)

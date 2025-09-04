@@ -89,6 +89,5 @@ def test_get_cross_pol_name():
 
 
 @pytest.mark.skip
-def test_get_granule_params():
+def test_get_burst_params():
     prep_rtc.get_burst_params('S1_146160_IW1_20241029T095958_VV_592B-BURST')
-    prep_rtc.validate_slc('S1A_IW_SLC__1SDV_20250704T124517_20250704T124544_059934_0771EA_C208')
